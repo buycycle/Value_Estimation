@@ -17,5 +17,7 @@ data
 
 plot
 
-# notebook
-notebook/
+
+# notebook.ipynb and notebook folder
+notebook.ipynb
+notebook
