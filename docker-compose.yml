@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+
+
+
+  test:
+    build:
+      context: .
+      dockerfile: ./docker/test.dockerfile
+    command: sh -c 'mkdir -p data && python -m unittest discover &&
+      for file in tests/test_*.py; do if echo ${file} | grep -q 'test_fixtures.py'; then continue; fi; pytest -v ${file}; done'
+
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/dev.dockerfile
+      args:
+        UID: ${UID:-1000}
+    ports:
+      - "8000:80"
+    # we could avoid here to copy the data folder to each container, check
+    #volumes:
+    #  - ./data:/app/data
+    environment:
+      - FLASK_ENV=production
+    command: sh -c 'python create_data.py && flask run --host=0.0.0.0 --port=80'
+
+
+
+
