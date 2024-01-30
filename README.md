@@ -151,10 +151,12 @@ Headers:
 
 Example:
     ```bash
+    
      curl -i -X POST price.buycycle.com/price_interval \
     -H "Content-Type: application/json" \
     -H "strategy: Generic" \
     -d '[{"family_id": 12, "msrp": 1200}, {"family_id": 2, "msrp": 2200}]'
+    
     ```
 
 Return:
@@ -170,6 +172,7 @@ Return:
         "app_version": "stable-001"
     }
     ```
+    
 HTTP Status Codes:
 
     - `200`: Successful response with price prediction data.
