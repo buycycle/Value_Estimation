@@ -36,6 +36,10 @@ numerical_features = [
     "rider_height_min",
     "rider_height_max",
     "sales_duration",
+    "bike_age",
+    "retail_price_to_sales_duration",
+    "quality_to_retaii_price"
+
 ]
 
 test_query = """
@@ -91,7 +95,10 @@ main_query = """
                 month(bikes.created_at) as bike_created_at_month,
                 bikes.year as bike_year,
 
+                -- age of the bike (not sure exactly what bike_year represent,
+                -- might be same as bike_age)
 
+                (YEAR(GETDATE()) - bike_created_at_year) as bike_age,
 
                 -- take if succeed_at is not null, else take updated_at difference to created_at
                 CASE
@@ -100,7 +107,10 @@ main_query = """
 
                 END as sales_duration,
 
-
+                -- the ratio of msrp and sales_duration could be another feature : in particular it would indicate high demand of certain bikes that may 
+                -- have high msrp but get sold faster or vice versa.
+                
+                msrp/sales_duration as retail_price_to_sales_duration,
 
                 -- spatial
 
@@ -143,6 +153,10 @@ main_query = """
 
                 -- quality score
                 quality_scores.score AS quality_score,
+
+                -- we can check the effect of high quality_score and msrp on the sales price
+
+                quality_score/msrp as quality_to_retaii_price,
 
                 -- is_mobile
                 bikes.is_mobile as is_mobile,
@@ -213,4 +227,7 @@ main_query_dtype = {
     "seller_id": pd.Int64Dtype(),
     "is_ebike": pd.Int64Dtype(),
     "is_frameset": pd.Int64Dtype(),
+    "bike_age": pd.Int64Dtype(),
+    "retail_price_to_sales_duration": pd.Int64Dtype(),
+    "quality_to_retaii_price": pd.Int64Dtype()
 }
