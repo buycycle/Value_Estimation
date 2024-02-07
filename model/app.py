@@ -42,12 +42,12 @@ ab = os.getenv("AB")
 app_name = "price"
 app_version = 'stable-001'
 
-KAFKA_TOPIC = config["KAFKA"]["topic"]
+KAFKA_TOPIC = config["KAFKA"]["topic_price"]
 KAFKA_BROKER = config["KAFKA"]["broker"]
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
-#logger = KafkaLogger(environment, ab, app_name,
-#                     app_version, KAFKA_TOPIC, KAFKA_BROKER)
+logger = KafkaLogger(environment, ab, app_name,
+                     app_version, KAFKA_TOPIC, KAFKA_BROKER)
 
 logger.info("Flask app started")
 
