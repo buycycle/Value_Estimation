@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 def ab = ""
 def image_tag = ""
 def environment = ""
