@@ -29,12 +29,9 @@ pipeline {
     }
     stages {
         stage('Build') {
-             steps {
-                withCredentials([string(credentialsId: 'recommendation-s3-path-credential', variable: 'S3_CONFIG_PATH')]) {
-                    sh "aws s3 cp ${S3_CONFIG_PATH} config/config.ini"
-                }
-                script {
-
+            steps {
+                sh "aws s3 cp s3://buycycle-env-bucket/rec-api-temp/config.ini config/config.ini"
+                script{
                     if (environment == "live") {
                         app = docker.build("price", "-f docker/main.dockerfile --build-arg ENVIRONMENT=${environment} --build-arg AB=${ab} .")
                     }
@@ -59,9 +56,9 @@ pipeline {
                 }
         }
         stage('Push Docker image') {
-            withCredentials([string(credentialsId: 'price-ecr-url', variable: 'ECR_URL')]) {
-                script {
-                    docker.withRegistry("${ECR_URL}", 'ecr:eu-central-1:aws-credentials-ecr') {
+            steps {
+                script{
+                    docker.withRegistry('https://930985312118.dkr.ecr.eu-central-1.amazonaws.com/price', 'ecr:eu-central-1:aws-credentials-ecr') {
                         app.push(image_tag)
                         app.push("latest")
                     }
