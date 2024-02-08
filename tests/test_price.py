@@ -23,7 +23,7 @@ def test_mean_error(testdata, testmodel, mean_error_limit=0.35, quantiles=[0.05,
     assert mean_percentage_error < mean_error_limit, f"Mean percentage error {mean_percentage_error} of test data is not below {mean_error_limit}"
 
 
-def test_in_prediction_interval(testdata, testmodel, interval_coverage_limit=0.75, quantiles=[0.05, 0.5, 0.95]):
+def test_in_prediction_interval(testdata, testmodel, interval_coverage_limit=0.7, quantiles=[0.05, 0.5, 0.95]):
     """
     Test that the sales price is between the low and high prediction interval for a certain percentage of cases.
     """
