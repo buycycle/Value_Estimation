@@ -1,4 +1,4 @@
-# price
+# Bike valuation
 
 Model that predicts the sales price of a bicycle given a set of bicycle features and historic sales data.
 The model also returns a prediction interval.
@@ -14,6 +14,10 @@ The model needs to be able to cope with different data quality for different use
 The mode returns the prediction interval for a given confidence score.
 In this context, a prediction interval is a range of values that is likely to contain the true value of a target variable for a given test instance, with a specified level of confidence.
 see: Nicolai Meinshausen. Quantile Regression Forests. Journal of Machine Learning Research, 7(6), 983-999, 2006. URL: https://www.jmlr.org/papers/volume7/meinshausen06a/meinshausen06a.pdf.
+
+## Notes
+
+Data read in takes 5sec.
 
 # AB test
 
@@ -151,10 +155,12 @@ Headers:
 
 Example:
     ```bash
-     curl -i -X POST price.buycycle.com/price_interval \
-    -H "Content-Type: application/json" \
-    -H "strategy: Generic" \
-    -d '[{"family_id": 12, "msrp": 1200}, {"family_id": 2, "msrp": 2200}]'
+       curl -i -X POST price.buycycle.com/price_interval \
+          -H "Content-Type: application/json" \
+          -H "strategy: Generic" \
+          -H "model: price" \
+          -H "version: canary-001" \
+          -d '[{"family_id": 12, "msrp": 1200}, {"family_id": 2, "msrp": 2200}]'
     ```
 
 Return:

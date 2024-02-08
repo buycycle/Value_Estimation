@@ -1,4 +1,3 @@
-
 import os
 import numpy as np
 import pandas as pd
@@ -24,6 +23,8 @@ from joblib import dump, load
 from buycycle.data import sql_db_read, DataStoreBase
 from src.price import train
 from quantile_forest import RandomForestQuantileRegressor, ExtraTreesQuantileRegressor
+
+import threading # for data read lock
 
 def get_data(
     main_query: str, main_query_dtype: str, index_col: str = "sales_price", config_paths: str = "config/config.ini"
@@ -489,10 +490,11 @@ class ModelStore(DataStoreBase):
         super().__init__()
         self.regressor = None
         self.data_transform_pipeline = None
+        self._lock = threading.Lock()  # Initialize a lock object
 
     def read_data(self):
-        self.regressor, self.data_transform_pipeline = read_model_pipeline()
+        with self._lock:  # Acquire the lock before reading data
+            self.regressor, self.data_transform_pipeline = read_model_pipeline()
 
     def get_logging_info(self):
         return {"regressor_info": str(self.regressor), "data_transform_pipeline": str(self.data_transform_pipeline)}
-

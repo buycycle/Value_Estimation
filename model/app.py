@@ -42,21 +42,30 @@ ab = os.getenv("AB")
 app_name = "price"
 app_version = 'stable-001'
 
-KAFKA_TOPIC = config["KAFKA"]["topic"]
+KAFKA_TOPIC = config["KAFKA"]["topic_price"]
 KAFKA_BROKER = config["KAFKA"]["broker"]
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
-#logger = KafkaLogger(environment, ab, app_name,
-#                     app_version, KAFKA_TOPIC, KAFKA_BROKER)
+logger = KafkaLogger(environment, ab, app_name,
+                     app_version, KAFKA_TOPIC, KAFKA_BROKER)
 
 logger.info("Flask app started")
 
 # create data stores and load periodically
 model_store = ModelStore()
 
-# read the data periodically
+# inital data readin
+while True:
+    try:
+        model_store.read_data()
+        break
+    except Exception as e:
+        logger.error("Data could not initially be red, trying in 60sec")
+        time.sleep(60)
+
+# then read the data periodically
 model_loader = Thread(
-    target=model_store.read_data_periodically, args=(22, logger))
+    target=model_store.read_data_periodically, args=(720, logger))
 
 model_loader.start()
 
@@ -135,18 +144,19 @@ def price():
 
     X_constructed = construct_input_df(X_input, features)
 
-    generic_strategy = GenericStrategy(
-        model_store.regressor, model_store.data_transform_pipeline, logger)
+    with model_store._lock:
+        generic_strategy = GenericStrategy(
+            model_store.regressor, model_store.data_transform_pipeline, logger)
 
-    quantiles = [0.05, 0.5, 0.95]
+        quantiles = [0.05, 0.5, 0.95]
 
-    X_transformed = model_store.data_transform_pipeline.transform(X_constructed)
+        X_transformed = model_store.data_transform_pipeline.transform(X_constructed)
 
-    strategy, price, interval, error = generic_strategy.predict_price(
-        X=X_transformed, quantiles=quantiles)
+        strategy, price, interval, error = generic_strategy.predict_price(
+            X=X_transformed, quantiles=quantiles)
 
-    price = price.tolist()
-    interval= interval.tolist()
+        price = price.tolist()
+        interval= interval.tolist()
 
     logger.info(
         strategy,
