@@ -27,6 +27,8 @@ categorical_features = [
     "is_ebike",
     "is_frameset",
     "frame_size",
+    "rating"
+    "rating_count"
 ]
 
 numerical_features = [
@@ -36,6 +38,8 @@ numerical_features = [
     "rider_height_min",
     "rider_height_max",
     "sales_duration",
+    "city_population"
+    "city_GDP"
 ]
 
 test_query = """
@@ -115,8 +119,14 @@ main_query = """
 
                 bikes.condition_code as condition_code,
 
-
-
+                -- City Population and City GDP can be found mapped  with city name 
+                city_metrics.city_population AS city_population
+                city_metrics.city_GDP AS city_GDP
+                
+                --Online Brand Value or Presence
+                OnlineBrandPresence.rating as rating
+                OnlineBrandPresence.numratings as rating_count
+                
                 bike_additional_infos.frame_size as frame_size,
                 bike_additional_infos.rider_height_min as rider_height_min,
                 bike_additional_infos.rider_height_max as rider_height_max,
@@ -165,7 +175,8 @@ main_query = """
                 join bookings on bikes.id = bookings.bike_id
                 join booking_accountings on bookings.id = booking_accountings.booking_id
 
-
+                join OnlineBrandPresence on biked.id = OnlineBrandPresence.bike_id
+                join city_metrics ON bikes.city = city_metrics.city_name
                 join quality_scores on bikes.id = quality_scores.bike_id
 
 
@@ -213,4 +224,8 @@ main_query_dtype = {
     "seller_id": pd.Int64Dtype(),
     "is_ebike": pd.Int64Dtype(),
     "is_frameset": pd.Int64Dtype(),
+    "city_population": pd.Int64Dtype(),
+    "city_gdp": pd.Float64Dtype(),
+    "rating": pd.Float64Dtype(), 
+    "rating_count": pd.Int64Dtype()
 }
