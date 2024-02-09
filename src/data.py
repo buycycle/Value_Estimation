@@ -36,8 +36,7 @@ This approach will help mitigate the influence of inflation on sales data, resul
 My approach to enhancing feature sets revolves around two core principles:
 
 1. **Deriving New Features from Existing Data:**
-   I prioritize the creation of nominal features by leveraging the inherent characteristics of our dataset. Recognizing the distinction 
-   between nominal and ordinal categories, I refrain from resorting to simplistic dummy variable conversions for nominal variables. 
+   Recognizing the distinction between nominal and ordinal categories, I refrain from resorting to simplistic dummy variable conversions for ordinal variables. 
    For instance, the "quality score" feature, being ordinal due to its inherent order, holds substantial informational value. 
    Yet, employing it as a nominal variable through dummy variable conversion presents inherent challenges such as Loss of Information, Misrepresentation of Relationships, 
    and Increased Dimensionality. In response, I have developed innovative techniques to extract insights from these variables. 
