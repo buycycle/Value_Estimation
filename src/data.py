@@ -24,7 +24,7 @@ from joblib import dump, load
 from buycycle.data import sql_db_read, DataStoreBase
 from src.price import train
 from quantile_forest import RandomForestQuantileRegressor, ExtraTreesQuantileRegressor
-
+from datetime import datetime
 import threading # for data read lock
 
 def get_data(
@@ -61,6 +61,8 @@ def clean_data(
     df = df[df["template_id"] != 79204].dropna(subset=[target])
     df = df[df[target] > 400]
     df = df[df[target] < 15000]
+    # Add new features
+    df = add_new_features(df)
     for col in numerical_features:
         if col in df.columns:
             q1, q3 = df[col].quantile(0.25), df[col].quantile(0.75)
@@ -70,6 +72,29 @@ def clean_data(
     df = df.loc[~df.index.duplicated(keep="last")]
     return df
 
+def add_new_features(df: pd.DataFrame, normalise_factor: float = 1) -> pd.DataFrame:
+    """
+    Adds new features to the DataFrame based on analysis.
+    Args:
+        df: DataFrame to add new features.
+        normalise_factor: Normalization factor for the interaction feature. Default is 1.
+    Returns:
+        DataFrame: DataFrame with new features added.
+    """
+
+    """by analysis on the data and genrally the product sales prices are mostly derived by the age of the product how old is the product as older the product lower the price
+     as every element in the product have expiry date and that leads to my first feature age_of_bike it can be correlated that higher the age lowe the price"""
+    current_date = datetime.now()
+    df['age_of_bike'] = (current_date.year - df['bike_created_at_year']) * 12 + (current_date.month - df['bike_created_at_month'])
+
+    """we can also try to incorporate another feature quality interaction with age as the distribution was comparable with age(most values ranged into 5-10) and the quality(most values ranged into 20-25)
+       so if there can be facotor or operation can concatnete there value can be a good feature as by analysis age is moderaely realted to less qua;ity so it can ve inversely proportional
+       but the distribution i analysed doesnt give concrete reponse to it so just propsing the idea below"""
+    
+    df['quality_age_interaction'] = df['quality_score'] * (normalise_factor*df['age_of_bike'])
+
+
+    return df
 
 def train_test_split_date(df, target, months):
     """
