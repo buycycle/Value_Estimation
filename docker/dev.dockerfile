@@ -49,5 +49,5 @@ ENV AB=${AB}
 # USER appuser
 
 # gunicron for production
-CMD ["gunicorn", "-w 4", "-b", "0.0.0.0:80", "app:app"]
+CMD ["gunicorn", "-w 1", "-b", "0.0.0.0:80", "app:app"]
 
