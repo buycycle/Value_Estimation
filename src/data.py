@@ -24,7 +24,53 @@ from joblib import dump, load
 from buycycle.data import sql_db_read, DataStoreBase
 from src.price import train
 from quantile_forest import RandomForestQuantileRegressor, ExtraTreesQuantileRegressor
+from datetime import datetime
+""" 
+Shifting sales over the years: 
 
+Given the uncertainty surrounding the duration of data collection, I advocate for the exclusion of inflationary effects from bike sales data. 
+This is motivated by the observation that the target market's purchasing power may have fluctuated over time, particularly in light of the current 6% inflation rate in Germany. 
+Therefore, I strongly suggest removing inflation from sales data. This adjustment can be achieved by dividing sales figures by the customer index corresponding to each currency. 
+This approach will help mitigate the influence of inflation on sales data, resulting in a more accurate representation of underlying trends and patterns.
+
+My approach to enhancing feature sets revolves around two core principles:
+
+1. **Deriving New Features from Existing Data:**
+   Recognizing the distinction between nominal and ordinal categories, I refrain from resorting to simplistic dummy variable conversions for ordinal variables. 
+   For instance, the "quality score" feature, being ordinal due to its inherent order, holds substantial informational value. 
+   Yet, employing it as a nominal variable through dummy variable conversion presents inherent challenges such as Loss of Information, Misrepresentation of Relationships, 
+   and Increased Dimensionality. In response, I have developed innovative techniques to extract insights from these variables. 
+   Additionally, I advocate for the removal of the "quality score" from categorical features to streamline the modelling process. 
+   I have devised a function to systematically generate new features, integrating them seamlessly with existing ones for enhanced predictive power.
+
+2. **Incorporating External Data from Social Networks and Online Platforms:**
+   I actively explore opportunities to enrich our dataset with valuable insights gleaned from social media and e-commerce platforms. 
+   Monitoring discussions and interactions related to brand and model preferences on platforms like Instagram and Twitter offers invaluable insights into consumer demand. 
+   For example, aggregating likes and posts about specific bike models yields invaluable market intelligence.
+   While the development of automated tools to scrape data from these platforms presents technical challenges, my extensive experience in developing such tools positions us 
+   favourably to harness this wealth of information effectively.
+
+"""
+
+def new_featrues(df: pd.DataFrame)->pd.DataFrame:
+    """
+    Generate new features from existing features.
+    Args:
+        df: Old Features
+    Returns:
+        DataFrame: New Features
+    """
+    # calculated_years_since_created_at shows how many years bike is manufactured
+    df['calculated_years_since_created_at'] = datetime.now().year - df['bike_created_at_year']
+
+    # sin and cosine help to convert month months to a cyclical variable
+    df['month_sin'] = np.sin(2*np.pi*df1.month/12)
+    df['month_cos'] = np.cos(2*np.pi*df1.month/12)
+
+    # To show the impact of quality scores : Quality Score * calculated_years_since_created_at * MSRP
+    df['quality_gap_msrp'] = df['calculated_years_since_created_at'] * df['msrp'] * df['quality_score']
+    return df
+    
 def get_data(
     main_query: str, main_query_dtype: str, index_col: str = "sales_price", config_paths: str = "config/config.ini"
 ) -> pd.DataFrame:
@@ -102,6 +148,7 @@ def create_data(query: str, query_dtype: str, numerical_features: List[str], tar
     """
     df = get_data(query, query_dtype, index_col="id")
     df = clean_data(df, numerical_features, target=target).sample(frac=1)
+    df = new_featrues(df)
     X_train, y_train, X_test, y_test = train_test_split_date(df, target, months)
     X_train.to_pickle(path + "X_train.pkl")
     y_train.to_pickle(path + "y_train.pkl")
