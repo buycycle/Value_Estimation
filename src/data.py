@@ -70,8 +70,22 @@ def clean_data(
     df = df.loc[~df.index.duplicated(keep="last")]
     return df
 
+def feature_engineering(df: pd.DataFrame, numerical_features: List[str], categorical_features: List[str]) -> pd.DataFrame, List[str], List[str]:
+    # replace bike_created_at_month with a sinusoidal transformation
+    df["bike_created_at_month_sin"] = np.sin(2 * np.pi * df["bike_created_at_month"] / 12)
+    # create bike age from bike_year
+    df["bike_age"] = pd.to_datetime("today").year - df["bike_year"]
+    df = df.drop("bike_year", axis=1)
 
-def train_test_split_date(df, target, months):
+    # add bike_created_at_month_sin to numerical features
+    numerical_features.append("bike_created_at_month_sin")
+    numerical_features.append("bike_age")
+    numerical_features.remove("bike_year")
+
+
+
+
+def train_test_split_date(df, numerical_features, categorical_features, target, months):
     """
     Splits data into training and test sets based on a date cutoff.
     Args:
@@ -86,9 +100,12 @@ def train_test_split_date(df, target, months):
     )
     cutoff_date = pd.to_datetime("today") - pd.DateOffset(months=months)
     train, test = df[df["bike_created_at"] <= cutoff_date], df[df["bike_created_at"] > cutoff_date]
-    X_train, y_train = train.drop([target, "bike_created_at"], axis=1), train[target]
-    X_test, y_test = test.drop([target, "bike_created_at"], axis=1), test[target]
-    return X_train, y_train, X_test, y_test
+    X_train, y_train = train.drop([target, "bike_created_at", "bike_created_at_month"], axis=1), train[target]
+    X_test, y_test = test.drop([target, "bike_created_at", "bike_created_at_month"], axis=1), test[target]
+    # remove bike_created at month from numerical features
+    numerical_features.remove("bike_created_at_month")
+
+    return X_train, y_train, X_test, y_test, numerical_features, categorical_features
 
 
 def create_data(query: str, query_dtype: str, numerical_features: List[str], target: str, months: int, path: str = "data/"):
@@ -98,17 +115,20 @@ def create_data(query: str, query_dtype: str, numerical_features: List[str], tar
         query: SQL query for main data.
         query_dtype: Data type for main query.
         numerical_features: numerical_features.
-        target: Target column.
+        arget: Target column.
         months: Number of months before current date to use as cutoff.
         path: Path to save data. Default is 'data/'.
     """
     df = get_data(query, query_dtype, index_col="id")
     df = clean_data(df, numerical_features, target=target).sample(frac=1)
-    X_train, y_train, X_test, y_test = train_test_split_date(df, target, months)
+    df, numerical_features, categorical_features = feature_engineering(df, numerical_features, categorical_features)
+    X_train, y_train, X_test, y_test, numerical_features, categorical_features = train_test_split_date(df, target, months)
     X_train.to_pickle(path + "X_train.pkl")
     y_train.to_pickle(path + "y_train.pkl")
     X_test.to_pickle(path + "X_test.pkl")
     y_test.to_pickle(path + "y_test.pkl")
+
+    return numerical_features, categorical_features
 
 
 def read_data(path: str = "data/"):
@@ -471,7 +491,7 @@ def create_data_model(
     Returns:
     - None
     """
-    create_data(main_query, main_query_dtype, numerical_features, target, months)
+    numerical_features, categorical_features = create_data(main_query, main_query_dtype, numerical_features, target, months)
     X_train, y_train, X_test, y_test = read_data()
 
     X_train, X_test, data_transform_pipeline = fit_transform(X_train, X_test, categorical_features, numerical_features)

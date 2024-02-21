@@ -9,7 +9,6 @@ categorical_features = [
     "frame_material_code",
     "shifting_code",
     "condition_code",
-    "bike_created_at_month",
     "sales_country_id",
     "bike_type_id",
     "bike_category_id",
@@ -20,22 +19,23 @@ categorical_features = [
     "family_id",
     "brand_id",
     "color",
-    "quality_score",
     "is_mobile",
     "currency_id",
     "seller_id",
     "is_ebike",
     "is_frameset",
-    "frame_size",
 ]
 
 numerical_features = [
     "msrp",
+    "bike_created_at_month",
     "bike_created_at_year",
     "bike_year",
     "rider_height_min",
     "rider_height_max",
     "sales_duration",
+    "quality_score",
+    "frame_size",
 ]
 
 test_query = """
@@ -195,7 +195,7 @@ main_query_dtype = {
     "mileage_code": str,
     "motor": pd.Int64Dtype(),
     "city": str,
-    "frame_size": str,
+    "frame_size": Int64Dtype(),
     "rider_height_min": pd.Float64Dtype(),
     "rider_height_max": pd.Float64Dtype(),
     "brake_type_code": str,
