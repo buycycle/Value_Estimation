@@ -70,7 +70,7 @@ def clean_data(
     df = df.loc[~df.index.duplicated(keep="last")]
     return df
 
-def feature_engineering(df: pd.DataFrame, numerical_features: List[str], categorical_features: List[str]) -> pd.DataFrame, List[str], List[str]:
+def feature_engineering(df: pd.DataFrame, numerical_features: List[str], categorical_features: List[str]) -> Tuple[pd.DataFrame, List[str], List[str]]:
     # replace bike_created_at_month with a sinusoidal transformation
     df["bike_created_at_month_sin"] = np.sin(2 * np.pi * df["bike_created_at_month"] / 12)
     # create bike age from bike_year
