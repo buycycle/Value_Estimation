@@ -122,6 +122,7 @@ def create_data(query: str, query_dtype: str, numerical_features: List[str], cat
         path: Path to save data. Default is 'data/'.
     """
     df = get_data(query, query_dtype, index_col="id")
+    df = df[numerical_features + categorical_features + [target]]
     print(f"Dimensions of df after get_data: {df.shape}")
     df = clean_data(df, numerical_features, target=target).sample(frac=1)
     print(f"Dimensions of df after clean_data and sampling: {df.shape}")
