@@ -91,8 +91,8 @@ def testdata():
     if not os.path.exists("./data/"):
         os.makedirs("./data/")
 
-    create_data(
-        query=main_query, query_dtype=main_query_dtype, numerical_features=numerical_features, target=target, months=2, path="./data/"
+    _, _ = create_data(
+        query=main_query, query_dtype=main_query_dtype, numerical_features=numerical_features, categorical_features=categorical_features, target=target, months=2, path="./data/"
     )
     X_train, y_train, X_test, y_test = read_data()
 
@@ -109,8 +109,8 @@ def testmodel():
         path="./data/",
         main_query=main_query,
         main_query_dtype=main_query_dtype,
-        categorical_features=categorical_features,
         numerical_features=numerical_features,
+        categorical_features=categorical_features,
         model=ExtraTreesQuantileRegressor,
         target=target,
         months=2,

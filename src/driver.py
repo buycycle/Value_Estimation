@@ -35,7 +35,6 @@ numerical_features = [
     "rider_height_max",
     "sales_duration",
     "quality_score",
-    "frame_size",
 ]
 
 test_query = """
@@ -117,7 +116,6 @@ main_query = """
 
 
 
-                bike_additional_infos.frame_size as frame_size,
                 bike_additional_infos.rider_height_min as rider_height_min,
                 bike_additional_infos.rider_height_max as rider_height_max,
 
@@ -195,7 +193,6 @@ main_query_dtype = {
     "mileage_code": str,
     "motor": pd.Int64Dtype(),
     "city": str,
-    "frame_size": Int64Dtype(),
     "rider_height_min": pd.Float64Dtype(),
     "rider_height_max": pd.Float64Dtype(),
     "brake_type_code": str,
