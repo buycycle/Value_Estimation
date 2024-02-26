@@ -4,7 +4,7 @@ target = "sales_price"
 
 categorical_features = [
     "template_id",
-    "city",
+#    "city",
     "brake_type_code",
     "frame_material_code",
     "shifting_code",
@@ -19,9 +19,8 @@ categorical_features = [
     "family_id",
     "brand_id",
     "color",
-    "is_mobile",
-    "currency_id",
-    "seller_id",
+#    "currency_id",
+#    "seller_id",
     "is_ebike",
     "is_frameset",
 ]

@@ -103,10 +103,8 @@ def train_test_split_date(df, numerical_features, categorical_features, target, 
     X_train, y_train = train.drop([target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1), train[target]
     X_test, y_test = test.drop([target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1), test[target]
     # remove bike_created at month from numerical features
-    if "bike_created_at_month" in numerical_features:
-        numerical_features.remove("bike_created_at_month")
-    if "bike_year" in numerical_features:
-        numerical_features.remove("bike_year")
+    numerical_features.remove("bike_created_at_month")
+    numerical_features.remove("bike_year")
 
     return X_train, y_train, X_test, y_test, numerical_features, categorical_features
 
