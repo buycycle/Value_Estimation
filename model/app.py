@@ -129,6 +129,9 @@ def price():
     strategy_target = request.headers.get('strategy', 'NA')  # Provide a default value if not found
 
 
+    user_id = json_payload.get('user_id')
+    distinct_id = json_payload.get('distinct_id')
+    bike_id = json_payload.get('bike_id')
 
 
     features = ['template_id', 'msrp', 'bike_created_at_year', 'bike_created_at_month',
@@ -163,10 +166,13 @@ def price():
     logger.info(
         strategy,
         extra={
-            "X_input": X_input.to_dict(orient='records'),
+            "user_id": user_id,
+            "distinct_id": distinct_id,
+            "bike_id": bike_id,
             "price": price,
             "interval": interval,
             "quantiles": quantiles,
+            "X_input": X_input.to_dict(orient='records'),
         },
     )
     if error:
