@@ -45,7 +45,7 @@ def get_data(
 
 
 def clean_data(
-    df: pd.DataFrame, numerical_features: List[str], target: str = "sales_price", iqr_limit: float = 3
+    df: pd.DataFrame, numerical_features: List[str], target: str = "sales_price", iqr_limit: float = 2
 ) -> pd.DataFrame:
     """
     Cleans data by removing outliers and unnecessary data.
