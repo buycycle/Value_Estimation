@@ -109,7 +109,6 @@ main_query = """
                 bikes.bike_category_id as bike_category_id,
                 bikes.mileage_code as mileage_code,
                 bikes.motor as motor,
-                bikes.city as city,
 
                 bikes.condition_code as condition_code,
 
@@ -145,10 +144,8 @@ main_query = """
                 bikes.is_mobile as is_mobile,
 
                 -- currency
-                bikes.currency_id as currency_id,
 
                 -- seller id
-                bikes.seller_id as seller_id,
 
                 -- is_frameset
                 bike_template_additional_infos.is_ebike as is_ebike,
@@ -191,7 +188,6 @@ main_query_dtype = {
     "bike_category_id": pd.Int64Dtype(),
     "mileage_code": str,
     "motor": pd.Int64Dtype(),
-    "city": str,
     "rider_height_min": pd.Float64Dtype(),
     "rider_height_max": pd.Float64Dtype(),
     "brake_type_code": str,
@@ -205,8 +201,6 @@ main_query_dtype = {
     "brand_id": pd.Int64Dtype(),
     "quality_score": pd.Int64Dtype(),
     "is_mobile": pd.Int64Dtype(),
-    "currency_id": pd.Int64Dtype(),
-    "seller_id": pd.Int64Dtype(),
     "is_ebike": pd.Int64Dtype(),
     "is_frameset": pd.Int64Dtype(),
 }

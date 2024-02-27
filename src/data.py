@@ -70,22 +70,20 @@ def clean_data(
     df = df.loc[~df.index.duplicated(keep="last")]
     return df
 
-def feature_engineering(df: pd.DataFrame, numerical_features: List[str], categorical_features: List[str]) -> Tuple[pd.DataFrame, List[str], List[str]]:
+def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     # replace bike_created_at_month with a sinusoidal transformation
     df["bike_created_at_month_sin"] = np.sin(2 * np.pi * df["bike_created_at_month"] / 12)
     # create bike age from bike_year
     df["bike_age"] = pd.to_datetime("today").year - df["bike_year"]
 
     # add bike_created_at_month_sin to numerical features
-    numerical_features.append("bike_created_at_month_sin")
-    numerical_features.append("bike_age")
 
-    return df, numerical_features, categorical_features
+    return df
 
 
 
 
-def train_test_split_date(df, numerical_features, categorical_features, target, months):
+def train_test_split_date(df, target, months):
     """
     Splits data into training and test sets based on a date cutoff.
     Args:
@@ -102,11 +100,8 @@ def train_test_split_date(df, numerical_features, categorical_features, target, 
     train, test = df[df["bike_created_at"] <= cutoff_date], df[df["bike_created_at"] > cutoff_date]
     X_train, y_train = train.drop([target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1), train[target]
     X_test, y_test = test.drop([target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1), test[target]
-    # remove bike_created at month from numerical features
-    numerical_features.remove("bike_created_at_month")
-    numerical_features.remove("bike_year")
 
-    return X_train, y_train, X_test, y_test, numerical_features, categorical_features
+    return X_train, y_train, X_test, y_test
 
 
 
@@ -122,19 +117,14 @@ def create_data(query: str, query_dtype: str, numerical_features: List[str], cat
         path: Path to save data. Default is 'data/'.
     """
     df = get_data(query, query_dtype, index_col="id")
-    df = df[numerical_features + categorical_features + [target]]
     print(f"Dimensions of df after get_data: {df.shape}")
     df = clean_data(df, numerical_features, target=target).sample(frac=1)
     print(f"Dimensions of df after clean_data and sampling: {df.shape}")
-    df, numerical_features, categorical_features = feature_engineering(df, numerical_features, categorical_features)
+    df = feature_engineering(df)
     print(f"Dimensions of df after feature_engineering: {df.shape}")
-    X_train, y_train, X_test, y_test, numerical_features, categorical_features = train_test_split_date(df, numerical_features, categorical_features, target, months)
-    X_train.to_pickle(path + "X_train.pkl")
-    y_train.to_pickle(path + "y_train.pkl")
-    X_test.to_pickle(path + "X_test.pkl")
-    y_test.to_pickle(path + "y_test.pkl")
+    X_train, y_train, X_test, y_test = train_test_split_date(df, target, months)
 
-    return numerical_features, categorical_features
+    return X_train, X_test, y_train, y_test
 
 
 def read_data(path: str = "data/"):
@@ -397,8 +387,6 @@ def create_data_transform_pipeline(
 def fit_transform(
     X_train: pd.DataFrame,
     X_test: pd.DataFrame,
-    categorical_features: Optional[List[str]] = None,
-    numerical_features: Optional[List[str]] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, Pipeline]:
     """
     Fit and transform the data using the pipeline.
@@ -417,10 +405,8 @@ def fit_transform(
     Tuple[DataFrame, DataFrame, Pipeline]
         Transformed training data, transformed testing data, and fitted pipeline.
     """
-    if categorical_features is None:
-        categorical_features = X_train.select_dtypes(include=["object"]).columns.tolist()
-    if numerical_features is None:
-        numerical_features = X_train.select_dtypes(exclude=["object"]).columns.tolist()
+    categorical_features = X_train.select_dtypes(include=["object"]).columns.tolist()
+    numerical_features = X_train.select_dtypes(exclude=["object"]).columns.tolist()
     data_transform_pipeline = create_data_transform_pipeline(categorical_features, numerical_features)
     X_train = data_transform_pipeline.fit_transform(X_train)
     X_test = data_transform_pipeline.transform(X_test)
@@ -500,10 +486,9 @@ def create_data_model(
     Returns:
     - None
     """
-    numerical_features, categorical_features = create_data(main_query, main_query_dtype, numerical_features, categorical_features, target, months)
-    X_train, y_train, X_test, y_test = read_data()
+    X_train, X_test, y_train, y_test = create_data(main_query, main_query_dtype, numerical_features, categorical_features, target, months)
 
-    X_train, X_test, data_transform_pipeline = fit_transform(X_train, X_test, categorical_features, numerical_features)
+    X_train, X_test, data_transform_pipeline = fit_transform(X_train, X_test)
 
     regressor = train(
         X_train,
@@ -513,7 +498,14 @@ def create_data_model(
         parameters,
         scoring=mean_absolute_percentage_error,
     )
+
+    X_train.to_pickle(path + "X_train.pkl")
+    y_train.to_pickle(path + "y_train.pkl")
+    X_test.to_pickle(path + "X_test.pkl")
+    y_test.to_pickle(path + "y_test.pkl")
     write_model_pipeline(regressor, data_transform_pipeline, path)
+
+    return categorical_features, numerical_features
 
 class ModelStore(DataStoreBase):
     def __init__(self):

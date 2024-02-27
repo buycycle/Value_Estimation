@@ -21,7 +21,7 @@ from buycycle.logger import KafkaLogger
 # sql queries and feature selection
 from src.driver import *
 
-from src.data import ModelStore
+from src.data import ModelStore, feature_engineering
 
 # import the function from src
 from src.strategies import GenericStrategy
@@ -144,13 +144,15 @@ def price():
 
     X_constructed = construct_input_df(X_input, features)
 
+    X_feature_engineered = feature_engineering(X_constructed)
+
     with model_store._lock:
         generic_strategy = GenericStrategy(
             model_store.regressor, model_store.data_transform_pipeline, logger)
 
         quantiles = [0.05, 0.5, 0.95]
 
-        X_transformed = model_store.data_transform_pipeline.transform(X_constructed)
+        X_transformed = model_store.data_transform_pipeline.transform(X_feature_engineered)
 
         strategy, price, interval, error = generic_strategy.predict_price(
             X=X_transformed, quantiles=quantiles)
