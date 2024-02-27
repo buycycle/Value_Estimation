@@ -14,8 +14,7 @@ def test_mean_error(testdata, testmodel, mean_error_limit=0.35, quantiles=[0.05,
     """Test that the mean percentage error of the test data is below a certain limit."""
     X_train, y_train, X_test, y_test = testdata
     model_store = testmodel
-    X_transformed = model_store.data_transform_pipeline.transform(X_test)
-    strategy, preds, intervals, error = predict_interval(X_transformed, model_store.regressor, quantiles, logger=None)
+    strategy, preds, intervals, error = predict_interval(X_test, model_store.regressor, quantiles, logger=None)
 
     percentage_errors = np.abs((y_test - preds) / y_test)
     mean_percentage_error = np.mean(percentage_errors)
@@ -30,9 +29,8 @@ def test_in_prediction_interval(testdata, testmodel, interval_coverage_limit=0.7
     X_train, y_train, X_test, y_test = testdata
     model_store = testmodel
 
-    X_transformed = model_store.data_transform_pipeline.transform(X_test)
     # and returns a strategy, predictions, intervals, and error
-    strategy, preds, intervals, error = predict_interval(X_transformed, model_store.regressor, quantiles, logger=None)
+    strategy, preds, intervals, error = predict_interval(X_test, model_store.regressor, quantiles, logger=None)
     # Calculate the coverage: the proportion of actual values within the predicted intervals
     coverage = np.mean([low <= actual <= high for actual, (low, high) in zip(y_test, intervals)])
     assert (
@@ -49,10 +47,9 @@ def test_time_predict(testdata, testmodel, time_limit_ms=250, quantiles=[0.05, 0
     random_indices = random.sample(range(len(X_test)), subset_size)
 
     X_test_subset = X_test.iloc[random_indices]
-    X_transformed_subset = model_store.data_transform_pipeline.transform(X_test_subset)
 
     start_time = time.time()
-    strategy, preds, intervals, error = predict_interval(X_transformed_subset, model_store.regressor, quantiles, logger=None)
+    strategy, preds, intervals, error = predict_interval(X_test_subset, model_store.regressor, quantiles, logger=None)
     end_time = time.time()
     elapsed_time = (end_time - start_time) * 1000  # Convert to milliseconds
 
@@ -68,8 +65,7 @@ def test_predict(testdata, testmodel, quantiles=[0.05, 0.5, 0.95], subset_fracti
     random_indices = random.sample(range(len(X_test)), subset_size)
 
     X_test_subset = X_test.iloc[random_indices]
-    X_transformed_subset = model_store.data_transform_pipeline.transform(X_test_subset)
 
-    strategy, preds, intervals, error = predict_interval(X_transformed_subset, model_store.regressor, quantiles, logger=None)
+    strategy, preds, intervals, error = predict_interval(X_test_subset, model_store.regressor, quantiles, logger=None)
 
     assert len(preds) == len(X_test_subset), "Prediction did not yield a result for each sample in the subset"

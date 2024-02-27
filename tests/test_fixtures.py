@@ -91,10 +91,11 @@ def testdata():
     if not os.path.exists("./data/"):
         os.makedirs("./data/")
 
-    _, _ = create_data(
+    numerical_features_new, categorical_features_new = create_data(
         query=main_query, query_dtype=main_query_dtype, numerical_features=numerical_features, categorical_features=categorical_features, target=target, months=2, path="./data/"
     )
     X_train, y_train, X_test, y_test = read_data()
+    X_train, X_test, data_transform_pipeline = fit_transform(X_train, X_test, categorical_features_new, numerical_features_new)
 
     return X_train, y_train, X_test, y_test
 
