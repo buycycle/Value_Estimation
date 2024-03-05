@@ -470,13 +470,14 @@ def create_data_model(
     parameters: Optional[Dict[str, Union[int, float]]] = None,
 ) -> None:
     """
-    Create a data model and write the model and pipeline to a given path.
+    Create data and model
+    write the data, model and datapipeline to a given path.
     Args:
     - path: The path where the model and pipeline will be written.
     - main_query: The main query to create data.
     - main_query_dtype: Data types for the main query.
-    - categorical_features: List of categorical feature names.
     - numerical_features: List of numerical feature names.
+    - categorical_features: List of categorical feature names.
     - model: The machine learning model to be trained.
     - target: The target variable name.
     - months: The number of months to consider in the data.
