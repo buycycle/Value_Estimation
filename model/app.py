@@ -136,11 +136,11 @@ def price():
 
     features = ['template_id', 'msrp', 'bike_created_at_year', 'bike_created_at_month',
                 'bike_year', 'sales_duration', 'sales_country_id', 'bike_type_id',
-                'bike_category_id', 'mileage_code', 'motor', 'city', 'condition_code',
+                'bike_category_id', 'mileage_code', 'motor', 'condition_code',
                 'frame_size', 'rider_height_min', 'rider_height_max', 'brake_type_code',
                 'frame_material_code', 'shifting_code', 'bike_component_id', 'color',
                 'family_model_id', 'family_id', 'brand_id', 'quality_score',
-                'is_mobile', 'currency_id', 'seller_id', 'is_ebike', 'is_frameset']
+                'currency_id', 'seller_id', 'is_ebike', 'is_frameset']
 
     #filter out non features, in the payload
     X_input = price_payload[price_payload.columns.intersection(features)]

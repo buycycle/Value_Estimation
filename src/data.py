@@ -45,18 +45,21 @@ def get_data(
 
 
 def clean_data(
-    df: pd.DataFrame, numerical_features: List[str], target: str = "sales_price", iqr_limit: float = 2
+    df: pd.DataFrame, numerical_features: List[str], categorical_features: List[str], target: str = "sales_price", iqr_limit: float = 2
 ) -> pd.DataFrame:
     """
     Cleans data by removing outliers and unnecessary data.
     Args:
         df: DataFrame to clean.
         numerical_features: List of numerical feature names.
+        categorical_features: List of categorical feature names.
         target: Target column. Default is 'sales_price'.
         iqr_limit: IQR limit for outlier detection. Default is 2.
     Returns:
         DataFrame: Cleaned data.
     """
+    # only keep categorical and numerical features
+    df = df[categorical_features + numerical_features + [target]]
     # remove custom template idf and where target = NA
     df = df[df["template_id"] != 79204].dropna(subset=[target])
     df = df[df[target] > 400]
@@ -118,7 +121,7 @@ def create_data(query: str, query_dtype: str, numerical_features: List[str], cat
     """
     df = get_data(query, query_dtype, index_col="id")
     print(f"Dimensions of df after get_data: {df.shape}")
-    df = clean_data(df, numerical_features, target=target).sample(frac=1)
+    df = clean_data(df, numerical_features, categorical_features, target=target).sample(frac=1)
     print(f"Dimensions of df after clean_data and sampling: {df.shape}")
     df = feature_engineering(df)
     print(f"Dimensions of df after feature_engineering: {df.shape}")

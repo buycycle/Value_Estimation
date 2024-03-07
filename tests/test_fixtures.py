@@ -31,7 +31,9 @@ def testdata():
         model=ExtraTreesQuantileRegressor,
         target=target,
         months=2,
-        parameters=None,
+        parameters = {
+            'n_jobs': -1,                 # Use all cores for training
+        },
     )
 
     X_train, y_train, X_test, y_test = read_data()
