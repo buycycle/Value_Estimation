@@ -40,7 +40,7 @@ app = Flask(__name__)
 environment = os.getenv("ENVIRONMENT")
 ab = os.getenv("AB")
 app_name = "price"
-app_version = 'stable-001'
+app_version = 'canary-001'
 
 KAFKA_TOPIC = config["KAFKA"]["topic_price"]
 KAFKA_BROKER = config["KAFKA"]["broker"]
