@@ -121,17 +121,20 @@ def price():
     if isinstance(json_payload, list):
         # Convert the list of dictionaries to a pandas DataFrame
         price_payload = pd.DataFrame(json_payload)
+        user_id = "multiple_bikes"
+        distinct_id = "multiple_bikes"
+        bike_id= "multiple_bikes"
     else:
         # If it's a single dictionary (one bike), convert it to a DataFrame with an index
         price_payload = pd.DataFrame([json_payload])
+        user_id = json_payload.get('user_id')
+        distinct_id = json_payload.get('distinct_id')
+        bike_id = json_payload.get('bike_id')
 
     # get target strategy, currently not implemented since we only have generic strategy
     strategy_target = request.headers.get('strategy', 'NA')  # Provide a default value if not found
 
 
-    user_id = json_payload.get('user_id')
-    distinct_id = json_payload.get('distinct_id')
-    bike_id = json_payload.get('bike_id')
 
 
     features = ['template_id', 'msrp', 'bike_created_at_year', 'bike_created_at_month',
