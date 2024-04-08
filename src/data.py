@@ -77,6 +77,7 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     df["bike_age"] = pd.to_datetime("today").year - df["bike_year"]
 
     # add bike_created_at_month_sin to numerical features
+    df = df.drop(columns=['bike_created_at_month', 'bike_year'])
 
     return df
 
