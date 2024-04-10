@@ -14,7 +14,7 @@ def test_mean_error(testdata, mean_error_limit=0.4, quantiles=[0.05, 0.5, 0.95])
     """Test that the mean percentage error of the test data is below a certain limit."""
     model_store, X_train, X_test, y_train, y_test = testdata
     strategy, preds, intervals, error = predict_interval(X_test, model_store.regressor, quantiles, logger=None)
-
+    
     percentage_errors = np.abs((y_test - preds) / y_test)
     mean_percentage_error = np.mean(percentage_errors)
 

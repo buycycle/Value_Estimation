@@ -3,17 +3,16 @@
 import os
 
 # fastapi
-from fastapi import FastAPI, Request, HTTPException, status, Body, Header
+from fastapi import FastAPI, Request, Response, HTTPException, status, Header, Body
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 from typing import Union, List
 
 # periodical data read-in
 from threading import Thread
 
 import pandas as pd
-import numpy as np
 import time
 
 # config file
@@ -22,19 +21,13 @@ import configparser
 # get loggers
 from buycycle.logger import Logger
 
-
-# sql queries and feature selection
+# sql queries, feature selection and other functions from src
 from src.driver import *
-
 from src.data import ModelStore, feature_engineering
-
-# import the function from src
 from src.strategies import GenericStrategy
-
-from src.helper import construct_input_df, get_field_value
+from src.helper import construct_input_df
 
 config_paths = "config/config.ini"
-
 config = configparser.ConfigParser()
 config.read(config_paths)
 
@@ -103,15 +96,22 @@ async def home():
     return {"msg": "price"}
 
 @app.post("/price_interval")
-async def price(request_data: List[PriceRequest], strategy: str= Header(default='Generic')):
+async def price(request_data: Union[PriceRequest, List[PriceRequest]], strategy: str= Header(default='Generic')):
     """take in bike data
     the payload should be in PriceRequest format
     """
     # Convert the PriceRequest to a dataframe
-    request_list_of_dic = []
-    for r in request_data:
-        request_list_of_dic.append(r.model_dump(exclude_unset=True))
-    price_payload = pd.DataFrame(request_list_of_dic)
+    if isinstance(request_data, list):
+        request_dic = []
+        for r in request_data:
+            request_dic.append(r.model_dump(exclude_unset=True))
+        price_payload = pd.DataFrame(request_dic)
+    else:
+        request_dic = request_data.model_dump(exclude_unset=True)
+        price_payload = pd.DataFrame([request_dic])
+
+    if price_payload.empty:
+        return Response(content="no valid request values", status_code=status.HTTP_400_BAD_REQUEST)
 
     # get target strategy, currently not implemented since we only have generic strategy
     strategy_target = strategy  # Provide a default value if not found
@@ -142,7 +142,7 @@ async def price(request_data: List[PriceRequest], strategy: str= Header(default=
             "price": price,
             "interval": interval,
             "quantiles": quantiles,
-            "X_input": request_list_of_dic,
+            "X_input": request_dic,
         },
     )
     if error:
@@ -164,32 +164,28 @@ async def price(request_data: List[PriceRequest], strategy: str= Header(default=
             "app_version": app_version,
         }
 
-
-# test this out, which errors do we need to handle
-
-
 # Error handling for 400 Bad Request
-# @app.exception_handler(RequestValidationError)
-# async def validation_exception_handler(request: Request, exc: RequestValidationError):
-#     # Log the error details using the provided logger
-#     logger.error(
-#         "400 Bad Request:",
-#         extra={
-#             "info": "Invalid request body format",
-#         },
-#     )
-#     # Construct a hint for the expected request body format
-#     expected_format = PriceRequest.model_json_schema
-#     # Return a JSON response with the error details and the hint
-#     return JSONResponse(
-#         status_code=status.HTTP_400_BAD_REQUEST,
-#         content={
-#             "status": "error",
-#             "message": "Invalid request body format",
-#             "hint": "The provided request body format is incorrect. Please ensure it adheres to the expected format:",
-#             "expected_format": expected_format,
-#         },
-#     )
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # Log the error details using the provided logger
+    logger.error(
+        "400 Bad Request:" + str(exc),
+        extra={
+            "info": "Invalid request body format",
+        },
+    )
+    # Construct a hint for the expected request body format
+    expected_format = PriceRequest.model_json_schema
+    # Return a JSON response with the error details and the hint
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "status": "error",
+            "message": "400 Bad Request:" + str(exc),
+            "hint": "The provided request body format is incorrect. Please ensure it adheres to the expected format:",
+            "expected_format": expected_format,
+        },
+    )
 
 
 # add 500 error handling

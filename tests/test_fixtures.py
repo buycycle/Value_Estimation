@@ -3,16 +3,12 @@
 import os
 import pytest
 
-from flask import Flask
-from flask.logging import create_logger
-
 from src.data import ModelStore, read_data, fit_transform, create_data
 
 from src.data import create_data_model
 from quantile_forest import ExtraTreesQuantileRegressor
 
 from src.driver import target, categorical_features, numerical_features, test_query, main_query, main_query_dtype
-
 
 
 
@@ -39,5 +35,5 @@ def testdata():
 
     model_store = ModelStore()
     model_store.read_data()
-
+    
     return model_store, X_train, X_test, y_train, y_test

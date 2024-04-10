@@ -1,4 +1,4 @@
-"""test fixutres used in the tests"""
+"""test fixutres used only in the test_fastapi.py"""
 
 import time
 
@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 from buycycle.logger import Logger
 import pytest
 
-@pytest.fixture(scope="package")
+@pytest.fixture
 def logger_mock():
     "mock the Logger"
     # Create a mock Logger instance
@@ -16,7 +16,7 @@ def logger_mock():
 
     return logger_mock
 
-@pytest.fixture(scope="package")
+@pytest.fixture
 def app_mock(logger_mock):
     "patch the model with the logger mock version and prevent threads from starting"
 

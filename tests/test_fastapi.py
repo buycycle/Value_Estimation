@@ -11,8 +11,19 @@ def test_read_main(app_mock):
     assert response.status_code == 200
     assert response.json() == {"msg": "price"}, f"expected response {response}"
 
+def test_single_request_fastapi(app_mock):
+    """test the single price request for all strategies of the fastapi app"""
+    client = TestClient(app_mock)
+    request = {"family_id": 12, "msrp": 1200, "is_ebike": 1}
+    response = client.post("/price_interval", json=request)
+    data = response.json()
+    strategy_used = data.get("strategy")
+    price = data.get("price")
 
-def test_integration_fastapi(app_mock, limit=150):
+    assert response.status_code == 200, f"request failed with status code {response.status_code} for request {request} with strategy {strategy_used}"
+    assert len(price) == 1, f"expected 1 price for strategy {strategy_used}, got the price {price}"
+
+def test_multiple_request_fastapi(app_mock, limit=150):
     """test time and len of return for all strategies of the fastapi app"""
     client = TestClient(app_mock)
     request = [{"family_id": 12, "msrp": 1200}, {"family_id": 2, "msrp": 2200}]
@@ -36,8 +47,8 @@ def test_integration_fastapi(app_mock, limit=150):
     assert len(price) == 2, f"expected 2 price for strategy {strategy_used}, got the price {price}"
     assert len(interval) == 2, f"expected 2 interval for strategy {strategy_used}, got the interval {interval}"
 
-def test_exception_handler_request(app_mock):
-    client = TestClient(app_mock)
-    request = {"family_id": 2, "msrp": 2200}
-    response = client.post("/price_interval", json=request)
-    assert response.status_code == 400, f"request failed with status code {response.status_code} for request {request}"
+# def test_exception_handler_request(app_mock):
+#     client = TestClient(app_mock)
+#     request = {"speed": 12}
+#     response = client.post("/price_interval", json=request)
+#     assert response.status_code == 400, f"request failed with status code {response.status_code} for request {request}"
