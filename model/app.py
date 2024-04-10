@@ -2,8 +2,6 @@
 # get env variable
 import os
 
-# # flask
-# from flask import Flask, request, jsonify
 # fastapi
 from fastapi import FastAPI, Request, HTTPException, status, Body, Header
 from fastapi.responses import JSONResponse
@@ -15,6 +13,7 @@ from typing import Union, List
 from threading import Thread
 
 import pandas as pd
+import numpy as np
 import time
 
 # config file
@@ -62,12 +61,12 @@ while True:
         model_store.read_data()
         break
     except Exception as e:
-        logger.error("Data could not initially be red, trying in 60sec")
+        logger.error("Data could not initially be read, trying in 60sec")
         time.sleep(60)
 
 # then read the data periodically
 model_loader = Thread(
-    target=model_store.read_data_periodically, args=(720, logger))
+    target=model_store.read_data, args=(720, logger))
 
 model_loader.start()
 
@@ -81,16 +80,10 @@ class PriceRequest(BaseModel):
     sales_country_id: Union[int, None] = None
     bike_type_id: Union[int, None] = None
     bike_category_id: Union[int, None] = None
-    mileage_code: Union[str, None] = None
     motor: Union[int, None] = None
-    condition_code: Union[str, None] = None
     rider_height_min: Union[float, None] = None
     rider_height_max: Union[float, None] = None
-    brake_type_code: Union[str, None] = None
-    frame_material_code: Union[str, None] = None
-    shifting_code: Union[str, None] = None
     bike_component_id: Union[int, None] = None
-    color: Union[str, None] = None
     family_model_id: Union[int, None] = None
     family_id: Union[int, None] = None
     brand_id: Union[int, None] = None
@@ -98,48 +91,36 @@ class PriceRequest(BaseModel):
     is_mobile: Union[int, None] = None
     is_ebike: Union[int, None] = None
     is_frameset: Union[int, None] = None
-
-    # @validator("*", pre=True, always=True)
-    # def at_least_one_value(cls, values):
-    #     if len(values) < 1:
-    #         raise ValueError("At least one attribute must be provided in the request body.")
-    #     return values
+    mileage_code: Union[object, None] = None
+    condition_code: Union[object, None] = None
+    brake_type_code: Union[object, None] = None
+    frame_material_code: Union[object, None] = None
+    shifting_code: Union[object, None] = None
+    color: Union[object, None] = None
 
 @app.get("/")
 async def home():
-    # html = "<h3>price</h3>"
-    # return html
-    return {"msg": "test"}
+    return {"msg": "price"}
 
 @app.post("/price_interval")
-async def price(request_data: PriceRequest, strategy: str= Header(default='Generic')):
+async def price(request_data: List[PriceRequest], strategy: str= Header(default='Generic')):
     """take in bike data
     the payload should be in PriceRequest format
     """
-     # Convert the list of PriceRequest to a dataframe
-    request_dic = request_data.model_dump()
-    print("request_dic", request_dic)
-    # price_payload = pd.DataFrame(request_dic)
-   
-    # price_payload = pd.DataFrame.from_dict(request_dic, orient='columns')
-    
-    price_payload = pd.DataFrame.from_dict(request_dic, orient='index', columns=['value'])
-    price_payload = price_payload.transpose()
-    print("price_payload", price_payload)
+    # Convert the PriceRequest to a dataframe
+    request_list_of_dic = []
+    for r in request_data:
+        request_list_of_dic.append(r.model_dump(exclude_unset=True))
+    price_payload = pd.DataFrame(request_list_of_dic)
+
     # get target strategy, currently not implemented since we only have generic strategy
     strategy_target = strategy  # Provide a default value if not found
     
-    # features = list(PriceRequest.model_fields.keys())
-    # #filter out non features, in the payload
-    # inter = set(price_payload.columns.tolist()).intersection(set(features))
-    # X_input = price_payload[list(inter)]
-    # print("inter",inter)
-    # print("X_input",X_input)
-                            
-
-    # # take dataframe X_input and features list for data engineering 
-    # X_constructed = construct_input_df(X_input, features)
-    X_feature_engineered = feature_engineering(price_payload)
+    # fill the missing data with np.nan 
+    features = list(PriceRequest.model_fields.keys())
+    X_constructed = construct_input_df(price_payload, features)
+    X_feature_engineered = feature_engineering(X_constructed) 
+    X_feature_engineered.drop(["bike_created_at_month", "bike_year"], axis=1, inplace=True)
 
     with model_store._lock:
         generic_strategy = GenericStrategy(
@@ -161,7 +142,7 @@ async def price(request_data: PriceRequest, strategy: str= Header(default='Gener
             "price": price,
             "interval": interval,
             "quantiles": quantiles,
-            "X_input": request_dic,
+            "X_input": request_list_of_dic,
         },
     )
     if error:
@@ -184,31 +165,31 @@ async def price(request_data: PriceRequest, strategy: str= Header(default='Gener
         }
 
 
-# test this out, which erros do we need to handle
+# test this out, which errors do we need to handle
 
 
 # Error handling for 400 Bad Request
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    # Log the error details using the provided logger
-    logger.error(
-        "400 Bad Request:",
-        extra={
-            "info": "Invalid request body format",
-        },
-    )
-    # Construct a hint for the expected request body format
-    expected_format = PriceRequest.model_json_schema
-    # Return a JSON response with the error details and the hint
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content={
-            "status": "error",
-            "message": "Invalid request body format",
-            "hint": "The provided request body format is incorrect. Please ensure it adheres to the expected format:",
-            "expected_format": expected_format,
-        },
-    )
+# @app.exception_handler(RequestValidationError)
+# async def validation_exception_handler(request: Request, exc: RequestValidationError):
+#     # Log the error details using the provided logger
+#     logger.error(
+#         "400 Bad Request:",
+#         extra={
+#             "info": "Invalid request body format",
+#         },
+#     )
+#     # Construct a hint for the expected request body format
+#     expected_format = PriceRequest.model_json_schema
+#     # Return a JSON response with the error details and the hint
+#     return JSONResponse(
+#         status_code=status.HTTP_400_BAD_REQUEST,
+#         content={
+#             "status": "error",
+#             "message": "Invalid request body format",
+#             "hint": "The provided request body format is incorrect. Please ensure it adheres to the expected format:",
+#             "expected_format": expected_format,
+#         },
+#     )
 
 
 # add 500 error handling

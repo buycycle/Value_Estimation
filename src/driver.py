@@ -2,6 +2,7 @@ import pandas as pd
 
 target = "sales_price"
 
+# 17 categorical features
 categorical_features = [
     "template_id",
 #    "city",
@@ -21,10 +22,12 @@ categorical_features = [
     "color",
 #    "currency_id",
 #    "seller_id",
+    "is_mobile",
     "is_ebike",
     "is_frameset",
 ]
 
+# 8 numerical fetures
 numerical_features = [
     "msrp",
     "bike_created_at_month",
@@ -174,6 +177,7 @@ main_query = """
 
              """
 
+# 27 features(id, is_mobile) and 1 label
 main_query_dtype = {
     "id": pd.Int64Dtype(),
     "template_id": pd.Int64Dtype(),

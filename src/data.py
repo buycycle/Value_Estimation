@@ -77,7 +77,7 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     df["bike_age"] = pd.to_datetime("today").year - df["bike_year"]
 
     # add bike_created_at_month_sin to numerical features
-    df = df.drop(columns=['bike_created_at_month', 'bike_year'])
+    # df = df.drop(columns=['bike_created_at_month', 'bike_year'])
 
     return df
 
@@ -101,6 +101,7 @@ def train_test_split_date(df, target, months):
     train, test = df[df["bike_created_at"] <= cutoff_date], df[df["bike_created_at"] > cutoff_date]
     X_train, y_train = train.drop([target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1), train[target]
     X_test, y_test = test.drop([target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1), test[target]
+    print(f"train_data: : {X_train.shape} and test_data: {X_test.shape}")
 
     return X_train, y_train, X_test, y_test
 
@@ -259,6 +260,7 @@ class MissForestImputer(BaseEstimator, TransformerMixin):
         """
         # Create a copy of the DataFrame to avoid changes to the original data
         X_transformed = X.copy()
+        print(f"df before MissForestImputer:{X.shape}")
         # Impute numerical features
         if self.numerical_features:
             X_transformed[self.numerical_features] = self.imp_num.transform(X[self.numerical_features])
@@ -312,6 +314,7 @@ class DummyCreator(BaseEstimator, TransformerMixin):
         Parameters: X : DataFrame (input data)
         Returns: DataFrame (transformed data)
         """
+        print(f"df before DummyCreator:{X.shape}")
         return self.encoder_.transform(X)
 
 
@@ -343,6 +346,7 @@ class Scaler(BaseEstimator, TransformerMixin):
         Parameters: X : DataFrame (input data)
         Returns: DataFrame (transformed data)
         """
+        print(f"df before Scaler:{X.shape}")
         X.loc[:, self.numerical_features] = (
             self.scaler_.transform(X[self.numerical_features]) if self.numerical_features else self.scaler_.transform(X)
         )
