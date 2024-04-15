@@ -173,7 +173,6 @@ main_query = """
 
                 WHERE bikes.status = 'sold'
                 AND (bookings.status = 'paid_out' OR bookings.status = 'success' OR bookings.status = 'sell_link_confirm' OR bookings.status = 'capture' OR bookings.status = 'paid')
-                LIMIT 1000
 
              """
 
