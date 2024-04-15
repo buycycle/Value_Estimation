@@ -27,7 +27,7 @@ def testdata():
         model=ExtraTreesQuantileRegressor,
         target=target,
         months=2,
-        parameters=None,
+        parameters = None,
     )
 
     X_train, y_train, X_test, y_test = read_data()
