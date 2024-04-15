@@ -39,7 +39,7 @@ app = FastAPI()
 environment = os.getenv("ENVIRONMENT")
 ab = os.getenv("AB")
 app_name = "price"
-app_version = 'stable-001'
+app_version = 'canary-001'
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
 

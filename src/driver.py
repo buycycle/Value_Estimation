@@ -143,8 +143,6 @@ main_query = """
                 -- quality score
                 quality_scores.score AS quality_score,
 
-                -- is_mobile
-                bikes.is_mobile as is_mobile,
 
                 -- currency
 
@@ -204,7 +202,6 @@ main_query_dtype = {
     "family_id": pd.Int64Dtype(),
     "brand_id": pd.Int64Dtype(),
     "quality_score": pd.Int64Dtype(),
-    "is_mobile": pd.Int64Dtype(),
     "is_ebike": pd.Int64Dtype(),
     "is_frameset": pd.Int64Dtype(),
 }

@@ -155,10 +155,9 @@ Headers:
 
 Example:
     ```bash
-    curl -i -X POST price.buycycle.com/price_interval \
+    curl -i -X POST dev.price.buycycle.com/price_interval \
         -H "Content-Type: application/json" \
         -H "strategy: Generic" \
-        -H "model: price-dev" \
         -H "version: canary-001" \
         -d '[{"user_id": 123, "distinct_id": "abc123", "bike_id": 456, "family_id": 12, "msrp": 1200}, {}]'
     ```
