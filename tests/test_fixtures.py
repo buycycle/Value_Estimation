@@ -26,7 +26,7 @@ def testdata():
         categorical_features=categorical_features,
         model=ExtraTreesQuantileRegressor,
         target=target,
-        months=22,
+        months=18,
         parameters=None,
     )
 
