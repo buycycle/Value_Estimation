@@ -80,7 +80,6 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     df["bike_age"] = pd.to_datetime("today").year - df["bike_year"]
 
     # add bike_created_at_month_sin to numerical features
-    # df = df.drop(columns=['bike_created_at_month', 'bike_year'])
 
     return df
 
@@ -104,7 +103,7 @@ def train_test_split_date(df, target, months):
     train, test = df[df["bike_created_at"] <= cutoff_date], df[df["bike_created_at"] > cutoff_date]
     X_train, y_train = train.drop([target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1), train[target]
     X_test, y_test = test.drop([target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1), test[target]
-    print(f"train_data: : {X_train.shape} and test_data: {X_test.shape}")
+    # print(f"train_data: : {X_train.shape} and test_data: {X_test.shape}")
 
     return X_train, y_train, X_test, y_test
 
