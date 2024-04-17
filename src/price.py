@@ -23,8 +23,6 @@ from buycycle.data import sql_db_read, DataStoreBase
 from quantile_forest import RandomForestQuantileRegressor, ExtraTreesQuantileRegressor
 
 
-
-
 def train(
     X_train: pd.DataFrame,
     y_train: pd.DataFrame,
@@ -118,7 +116,7 @@ def predict_point_estimate(X_transformed: pd.DataFrame, regressor: Callable) -> 
 
 
 def predict_interval(
-        X_transformed: pd.DataFrame, regressor: Callable, quantiles: List[float], logger: Callable
+    X_transformed: pd.DataFrame, regressor: Callable, quantiles: List[float], logger: Callable
 ) -> Tuple[str, np.ndarray, np.ndarray, str]:
     """
     Transform X and predicts target variable as well as prediction interval.
@@ -297,4 +295,3 @@ def compare_models(
         print("{} Test error: {}".format(model["name"], score))
     print("\nBest Model: {}, Error: {}".format(best_model["name"], best_score))
     return best_model["model"]
-

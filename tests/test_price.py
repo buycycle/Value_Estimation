@@ -19,7 +19,9 @@ def test_mean_error(testdata, mean_error_limit=0.4, quantiles=[0.05, 0.5, 0.95])
     mean_percentage_error = np.mean(percentage_errors)
     print(f"Mean percentage error: {mean_percentage_error}")
 
-    assert mean_percentage_error < mean_error_limit, f"Mean percentage error {mean_percentage_error} of test data is not below {mean_error_limit}"
+    assert (
+        mean_percentage_error < mean_error_limit
+    ), f"Mean percentage error {mean_percentage_error} of test data is not below {mean_error_limit}"
 
 
 def test_in_prediction_interval(testdata, interval_coverage_limit=0.7, quantiles=[0.05, 0.5, 0.95]):

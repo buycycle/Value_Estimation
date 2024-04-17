@@ -120,11 +120,8 @@ def create_data(query: str, query_dtype: str, numerical_features: List[str], cat
         path: Path to save data. Default is 'data/'.
     """
     df = get_data(query, query_dtype, index_col="id")
-    print(f"Dimensions of df after get_data: {df.shape}")
     df = clean_data(df, numerical_features, categorical_features, target=target).sample(frac=1)
-    print(f"Dimensions of df after clean_data and sampling: {df.shape}")
     df = feature_engineering(df)
-    print(f"Dimensions of df after feature_engineering: {df.shape}")
     X_train, y_train, X_test, y_test = train_test_split_date(df, target, months)
 
     return X_train, X_test, y_train, y_test
@@ -414,8 +411,7 @@ def fit_transform(
     X_train = data_transform_pipeline.fit_transform(X_train)
     X_test = data_transform_pipeline.transform(X_test)
 
-    print(f"Model has been fit and transformed with numerical features: {numerical_features} "
-          f"and categorical features: {categorical_features}")
+
     return X_train, X_test, data_transform_pipeline
 
 
