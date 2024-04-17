@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 
 from src.price import predict_interval
 
+
 class PricePredictionStrategy(ABC):
     @abstractmethod
     def predict_price(self, X: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, str]:

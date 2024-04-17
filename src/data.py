@@ -103,7 +103,6 @@ def train_test_split_date(df, target, months):
     train, test = df[df["bike_created_at"] <= cutoff_date], df[df["bike_created_at"] > cutoff_date]
     X_train, y_train = train.drop([target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1), train[target]
     X_test, y_test = test.drop([target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1), test[target]
-    print(f"train_data: : {X_train.shape} and test_data: {X_test.shape}")
 
     return X_train, y_train, X_test, y_test
 
@@ -121,11 +120,8 @@ def create_data(query: str, query_dtype: str, numerical_features: List[str], cat
         path: Path to save data. Default is 'data/'.
     """
     df = get_data(query, query_dtype, index_col="id")
-    print(f"Dimensions of df after get_data: {df.shape}")
     df = clean_data(df, numerical_features, categorical_features, target=target).sample(frac=1)
-    print(f"Dimensions of df after clean_data and sampling: {df.shape}")
     df = feature_engineering(df)
-    print(f"Dimensions of df after feature_engineering: {df.shape}")
     X_train, y_train, X_test, y_test = train_test_split_date(df, target, months)
 
     return X_train, X_test, y_train, y_test
@@ -262,7 +258,6 @@ class MissForestImputer(BaseEstimator, TransformerMixin):
         """
         # Create a copy of the DataFrame to avoid changes to the original data
         X_transformed = X.copy()
-        print(f"df before MissForestImputer:{X.shape}")
         # Impute numerical features
         if self.numerical_features:
             X_transformed[self.numerical_features] = self.imp_num.transform(X[self.numerical_features])
@@ -316,7 +311,6 @@ class DummyCreator(BaseEstimator, TransformerMixin):
         Parameters: X : DataFrame (input data)
         Returns: DataFrame (transformed data)
         """
-        print(f"df before DummyCreator:{X.shape}")
         return self.encoder_.transform(X)
 
 
@@ -348,7 +342,6 @@ class Scaler(BaseEstimator, TransformerMixin):
         Parameters: X : DataFrame (input data)
         Returns: DataFrame (transformed data)
         """
-        print(f"df before Scaler:{X.shape}")
         X.loc[:, self.numerical_features] = (
             self.scaler_.transform(X[self.numerical_features]) if self.numerical_features else self.scaler_.transform(X)
         )
@@ -418,8 +411,7 @@ def fit_transform(
     X_train = data_transform_pipeline.fit_transform(X_train)
     X_test = data_transform_pipeline.transform(X_test)
 
-    print(f"Model has been fit and transformed with numerical features: {numerical_features} "
-          f"and categorical features: {categorical_features}")
+
     return X_train, X_test, data_transform_pipeline
 
 
