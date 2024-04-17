@@ -10,7 +10,12 @@ juypter:
 	@cd notebook; PYTHONPATH=".." jupyter notebook notebook.ipynb
 
 test:
-	pytest -v --ignore=tests/test_fixtures.py tests/
+	# run integration test
+	pytest -v tests/test_fastapi.py
+
+test_unit:
+	# run test cases in tests directory, optional with -s for debugging
+	pytest -v --ignore=tests/test_fixtures.py --ignore=tests/test_fastapi.py tests/
 
 lint:
 	pylint --disable=R,C,W1203,W1202 src/price.py

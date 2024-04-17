@@ -2,9 +2,9 @@ import pandas as pd
 
 target = "sales_price"
 
+# 17 categorical features
 categorical_features = [
     "template_id",
-#    "city",
     "brake_type_code",
     "frame_material_code",
     "shifting_code",
@@ -19,12 +19,12 @@ categorical_features = [
     "family_id",
     "brand_id",
     "color",
-#    "currency_id",
-#    "seller_id",
+    "is_mobile",
     "is_ebike",
     "is_frameset",
 ]
 
+# 8 numerical fetures
 numerical_features = [
     "msrp",
     "bike_created_at_month",
@@ -140,6 +140,8 @@ main_query = """
                 -- quality score
                 quality_scores.score AS quality_score,
 
+                -- is_mobile
+                bikes.is_mobile as is_mobile,
 
                 -- currency
 
@@ -169,9 +171,9 @@ main_query = """
                 WHERE bikes.status = 'sold'
                 AND (bookings.status = 'paid_out' OR bookings.status = 'success' OR bookings.status = 'sell_link_confirm' OR bookings.status = 'capture' OR bookings.status = 'paid')
 
-
              """
 
+# 27 features(id, is_mobile) and 1 label
 main_query_dtype = {
     "id": pd.Int64Dtype(),
     "template_id": pd.Int64Dtype(),
@@ -198,6 +200,7 @@ main_query_dtype = {
     "family_id": pd.Int64Dtype(),
     "brand_id": pd.Int64Dtype(),
     "quality_score": pd.Int64Dtype(),
+    "is_mobile": pd.Int64Dtype(),
     "is_ebike": pd.Int64Dtype(),
     "is_frameset": pd.Int64Dtype(),
 }
