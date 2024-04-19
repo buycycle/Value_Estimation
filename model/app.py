@@ -138,7 +138,7 @@ async def price_interval(
             model_store.regressor, model_store.data_transform_pipeline, logger
         )
 
-        quantiles = [0.05, 0.5, 0.95]
+        quantiles = [0.2, 0.5, 0.8]
 
         X_transformed = model_store.data_transform_pipeline.transform(
             X_feature_engineered
