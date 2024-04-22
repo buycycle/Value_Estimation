@@ -22,7 +22,7 @@ create_data_model(
     categorical_features=categorical_features,
     model=ExtraTreesQuantileRegressor,
     target=target,
-    months=18,
+    months=2,
     parameters=None,
 )
 
