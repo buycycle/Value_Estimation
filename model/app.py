@@ -157,6 +157,17 @@ def price():
 
         price = price.tolist()
         interval= interval.tolist()
+    # scale interval to 5% of price
+    new_interval = []
+    for i, p in zip(interval, price):
+        current_interval_size = i[1] - i[0]
+        desired_interval_size = p * 0.05
+        scaling_factor = desired_interval_size / current_interval_size
+        # Calculate the new interval bounds
+        new_lower_bound = i[0] * scaling_factor + p * (1 - scaling_factor)
+        new_upper_bound = i[1] * scaling_factor + p * (1 - scaling_factor)
+        new_interval.append([new_lower_bound, new_upper_bound])
+    interval = new_interval
 
     logger.info(
         strategy,
