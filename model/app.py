@@ -67,31 +67,31 @@ class PriceRequest(BaseModel):
     """Class representing the price request"""
 
     template_id: Union[int, None] = None
-    msrp: Union[float, None] = None
-    bike_created_at_year: Union[int, None] = None
-    bike_created_at_month: Union[int, None] = None
-    bike_year: Union[int, None] = None
-    sales_duration: Union[int, None] = None
+    brake_type_code: Union[object, None] = None
+    frame_material_code: Union[object, None] = None
+    shifting_code: Union[object, None] = None
+    condition_code: Union[object, None] = None
     sales_country_id: Union[int, None] = None
     bike_type_id: Union[int, None] = None
     bike_category_id: Union[int, None] = None
+    mileage_code: Union[object, None] = None
     motor: Union[int, None] = None
-    rider_height_min: Union[float, None] = None
-    rider_height_max: Union[float, None] = None
     bike_component_id: Union[int, None] = None
     family_model_id: Union[int, None] = None
     family_id: Union[int, None] = None
     brand_id: Union[int, None] = None
-    quality_score: Union[int, None] = None
+    color: Union[object, None] = None
     is_mobile: Union[int, None] = None
     is_ebike: Union[int, None] = None
     is_frameset: Union[int, None] = None
-    mileage_code: Union[object, None] = None
-    condition_code: Union[object, None] = None
-    brake_type_code: Union[object, None] = None
-    frame_material_code: Union[object, None] = None
-    shifting_code: Union[object, None] = None
-    color: Union[object, None] = None
+    msrp: Union[float, None] = None
+    bike_created_at_month: Union[int, None] = None
+    bike_created_at_year: Union[int, None] = None
+    bike_year: Union[int, None] = None
+    rider_height_min: Union[float, None] = None
+    rider_height_max: Union[float, None] = None
+    sales_duration: Union[int, None] = None
+    quality_score: Union[int, None] = None
 
 
 @app.get("/")
