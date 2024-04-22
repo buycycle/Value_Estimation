@@ -95,7 +95,7 @@ class PriceRequest(BaseModel):
 
 
 @app.get("/")
-def home():
+async def home():
     return {"msg": "price"}
 
 
@@ -105,7 +105,7 @@ def health_check():
 
 
 @app.post("/price_interval")
-def price_interval(
+async def price_interval(
     request_data: Union[PriceRequest, List[PriceRequest]],
     strategy: str = Header(default="Generic"),
 ):
