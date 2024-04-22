@@ -26,11 +26,12 @@ def get_field_value(dataframe: pd.DataFrame, field: str, default_value: Any, dty
     Any: The field value from the DataFrame converted to the specified datatype.
     If the field does not exist or its value is null, the default value is returned.
     """
-    na_values = ['N/A', 'NA', 'na', 'n/a', 'NaN', 'nan', None, 'None', 'NONE', '']
+    na_values = ["N/A", "NA", "na", "n/a", "NaN", "nan", None, "None", "NONE", ""]
     if field not in dataframe or dataframe[field].iloc[0] in na_values:
         return dtype(default_value)
     else:
         return dtype(dataframe[field].iloc[0])
+
 
 def construct_input_df(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
     """
