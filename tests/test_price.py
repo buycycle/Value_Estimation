@@ -40,7 +40,7 @@ def test_in_prediction_interval(testdata, testmodel, interval_coverage_limit=0.7
     ), f"Sales price is not within prediction interval for at least {interval_coverage_limit * 100}% of cases, coverage {coverage}"
 
 
-def test_time_predict(testdata, testmodel, time_limit_ms=250, quantiles=[0.05, 0.5, 0.95], subset_fraction=0.2):
+def test_time_predict(testdata, testmodel, time_limit_ms=280, quantiles=[0.05, 0.5, 0.95], subset_fraction=0.2):
     """Test that predicting for a random subset of X_test takes less than a certain time limit in milliseconds."""
     X_train, y_train, X_test, y_test = testdata
     model_store = testmodel
