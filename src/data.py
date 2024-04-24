@@ -1,4 +1,3 @@
-
 import os
 import numpy as np
 import pandas as pd
@@ -25,10 +24,14 @@ from buycycle.data import sql_db_read, DataStoreBase
 from src.price import train
 from quantile_forest import RandomForestQuantileRegressor, ExtraTreesQuantileRegressor
 
-import threading # for data read lock
+import threading  # for data read lock
+
 
 def get_data(
-    main_query: str, main_query_dtype: str, index_col: str = "sales_price", config_paths: str = "config/config.ini"
+    main_query: str,
+    main_query_dtype: str,
+    index_col: str = "sales_price",
+    config_paths: str = "config/config.ini",
 ) -> pd.DataFrame:
     """
     Fetches data from SQL database.
@@ -40,12 +43,22 @@ def get_data(
     Returns:
         DataFrame: Main data.
     """
-    df = sql_db_read(query=main_query, DB="DB_BIKES", config_paths=config_paths, dtype=main_query_dtype, index_col=index_col)
+    df = sql_db_read(
+        query=main_query,
+        DB="DB_BIKES",
+        config_paths=config_paths,
+        dtype=main_query_dtype,
+        index_col=index_col,
+    )
     return df
 
 
 def clean_data(
-    df: pd.DataFrame, numerical_features: List[str], categorical_features: List[str], target: str = "sales_price", iqr_limit: float = 2
+    df: pd.DataFrame,
+    numerical_features: List[str],
+    categorical_features: List[str],
+    target: str = "sales_price",
+    iqr_limit: float = 2,
 ) -> pd.DataFrame:
     """
     Cleans data by removing outliers and unnecessary data.
@@ -68,14 +81,22 @@ def clean_data(
         if col in df.columns:
             q1, q3 = df[col].quantile(0.25), df[col].quantile(0.75)
             iqr = q3 - q1
-            df = df[~((df[col] < (q1 - iqr_limit * iqr)) | (df[col] > (q3 + iqr_limit * iqr)))]
+            df = df[
+                ~(
+                    (df[col] < (q1 - iqr_limit * iqr))
+                    | (df[col] > (q3 + iqr_limit * iqr))
+                )
+            ]
     # remove duplicates
     df = df.loc[~df.index.duplicated(keep="last")]
     return df
 
+
 def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     # replace bike_created_at_month with a sinusoidal transformation
-    df["bike_created_at_month_sin"] = np.sin(2 * np.pi * df["bike_created_at_month"] / 12)
+    df["bike_created_at_month_sin"] = np.sin(
+        2 * np.pi * df["bike_created_at_month"] / 12
+    )
     # create bike age from bike_year
     df["bike_age"] = pd.to_datetime("today").year - df["bike_year"]
 
@@ -83,8 +104,6 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     # df = df.drop(columns=['bike_created_at_month', 'bike_year'])
 
     return df
-
-
 
 
 def train_test_split_date(df, target, months):
@@ -98,19 +117,40 @@ def train_test_split_date(df, target, months):
         X_train, y_train, X_test, y_test: Training and test sets.
     """
     df["bike_created_at"] = pd.to_datetime(
-        df["bike_created_at_year"].astype(str) + df["bike_created_at_month"].astype(str), format="%Y%m"
+        df["bike_created_at_year"].astype(str)
+        + df["bike_created_at_month"].astype(str),
+        format="%Y%m",
     )
     cutoff_date = pd.to_datetime("today") - pd.DateOffset(months=months)
-    train, test = df[df["bike_created_at"] <= cutoff_date], df[df["bike_created_at"] > cutoff_date]
-    X_train, y_train = train.drop([target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1), train[target]
-    X_test, y_test = test.drop([target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1), test[target]
-    print(f"train_data: : {X_train.shape} and test_data: {X_test.shape}")
+    train, test = (
+        df[df["bike_created_at"] <= cutoff_date],
+        df[df["bike_created_at"] > cutoff_date],
+    )
+    X_train, y_train = (
+        train.drop(
+            [target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1
+        ),
+        train[target],
+    )
+    X_test, y_test = (
+        test.drop(
+            [target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1
+        ),
+        test[target],
+    )
 
     return X_train, y_train, X_test, y_test
 
 
-
-def create_data(query: str, query_dtype: str, numerical_features: List[str], categorical_features: List[str], target: str, months: int, path: str = "data/"):
+def create_data(
+    query: str,
+    query_dtype: str,
+    numerical_features: List[str],
+    categorical_features: List[str],
+    target: str,
+    months: int,
+    path: str = "data/",
+):
     """
     Fetches, cleans, splits, and saves data.
     Args:
@@ -122,10 +162,11 @@ def create_data(query: str, query_dtype: str, numerical_features: List[str], cat
         path: Path to save data. Default is 'data/'.
     """
     df = get_data(query, query_dtype, index_col="id")
-    df = clean_data(df, numerical_features, categorical_features, target=target).sample(frac=1)
+    df = clean_data(df, numerical_features, categorical_features, target=target).sample(
+        frac=1
+    )
     df = feature_engineering(df)
     X_train, y_train, X_test, y_test = train_test_split_date(df, target, months)
-
     return X_train, X_test, y_train, y_test
 
 
@@ -186,7 +227,14 @@ class MissForestImputer(BaseEstimator, TransformerMixin):
         the same results each time the estimator is used.
     """
 
-    def __init__(self, categorical_features, numerical_features, n_estimators=100, max_depth=5, random_state=0):
+    def __init__(
+        self,
+        categorical_features,
+        numerical_features,
+        n_estimators=100,
+        max_depth=5,
+        random_state=0,
+    ):
         self.categorical_features = categorical_features
         self.numerical_features = numerical_features
         self.n_estimators = n_estimators
@@ -195,7 +243,9 @@ class MissForestImputer(BaseEstimator, TransformerMixin):
         self.label_encoders = {col: LabelEncoder() for col in self.categorical_features}
         self.imp_num = IterativeImputer(
             estimator=RandomForestRegressor(
-                n_estimators=self.n_estimators, max_depth=self.max_depth, random_state=self.random_state
+                n_estimators=self.n_estimators,
+                max_depth=self.max_depth,
+                random_state=self.random_state,
             ),
             initial_strategy="mean",
             max_iter=10,
@@ -203,7 +253,9 @@ class MissForestImputer(BaseEstimator, TransformerMixin):
         )
         self.imp_cat = IterativeImputer(
             estimator=RandomForestClassifier(
-                n_estimators=self.n_estimators, max_depth=self.max_depth, random_state=self.random_state
+                n_estimators=self.n_estimators,
+                max_depth=self.max_depth,
+                random_state=self.random_state,
             ),
             initial_strategy="most_frequent",
             max_iter=10,
@@ -231,7 +283,9 @@ class MissForestImputer(BaseEstimator, TransformerMixin):
             # Store the transformed data in a temporary variable
             transformed_data = pd.Series(index=X.index)
             # Only assign transformed values to non-null indices
-            transformed_data.loc[valid_data.index] = self.label_encoders[col].transform(valid_data)
+            transformed_data.loc[valid_data.index] = self.label_encoders[col].transform(
+                valid_data
+            )
             # Fill missing entries with NaN to maintain the length consistency
             transformed_data = transformed_data.reindex(X.index, fill_value=np.nan)
             # Assign the transformed data back to the DataFrame
@@ -242,7 +296,9 @@ class MissForestImputer(BaseEstimator, TransformerMixin):
         # Fit categorical imputer
         if self.categorical_features:
             # Convert categorical columns to numeric for imputation
-            X[self.categorical_features] = X[self.categorical_features].apply(pd.to_numeric, errors="coerce")
+            X[self.categorical_features] = X[self.categorical_features].apply(
+                pd.to_numeric, errors="coerce"
+            )
             self.imp_cat.fit(X[self.categorical_features])
         return self
 
@@ -260,14 +316,17 @@ class MissForestImputer(BaseEstimator, TransformerMixin):
         """
         # Create a copy of the DataFrame to avoid changes to the original data
         X_transformed = X.copy()
-        print(f"df before MissForestImputer:{X.shape}")
         # Impute numerical features
         if self.numerical_features:
-            X_transformed[self.numerical_features] = self.imp_num.transform(X[self.numerical_features])
+            X_transformed[self.numerical_features] = self.imp_num.transform(
+                X[self.numerical_features]
+            )
         # Impute categorical features
         if self.categorical_features:
             # Convert categorical columns to numeric for imputation
-            X_cat_numeric = X[self.categorical_features].apply(lambda col: pd.to_numeric(col, errors="coerce"))
+            X_cat_numeric = X[self.categorical_features].apply(
+                lambda col: pd.to_numeric(col, errors="coerce")
+            )
             X_cat_imputed = self.imp_cat.transform(X_cat_numeric)
             # Decode the categorical features back to original labels
             for idx, col in enumerate(self.categorical_features):
@@ -276,9 +335,13 @@ class MissForestImputer(BaseEstimator, TransformerMixin):
                 # Get the numeric representation of the known classes
                 known_labels = np.arange(len(self.label_encoders[col].classes_))
                 # Clip the imputed labels to the range of known numeric labels
-                imputed_labels = np.clip(imputed_labels, known_labels.min(), known_labels.max())
+                imputed_labels = np.clip(
+                    imputed_labels, known_labels.min(), known_labels.max()
+                )
                 # Inverse transform the labels to original categories
-                X_transformed[col] = self.label_encoders[col].inverse_transform(imputed_labels.astype(int))
+                X_transformed[col] = self.label_encoders[col].inverse_transform(
+                    imputed_labels.astype(int)
+                )
         return X_transformed
 
 
@@ -301,7 +364,11 @@ class DummyCreator(BaseEstimator, TransformerMixin):
         Returns: self : DummyCreator (fitted instance)
         """
         self.encoder_ = (
-            ce.OneHotEncoder(cols=self.categorical_features, handle_unknown="indicator", use_cat_names=True)
+            ce.OneHotEncoder(
+                cols=self.categorical_features,
+                handle_unknown="indicator",
+                use_cat_names=True,
+            )
             if self.categorical_features
             else ce.OneHotEncoder(handle_unknown="indicator", use_cat_names=True)
         )
@@ -314,7 +381,6 @@ class DummyCreator(BaseEstimator, TransformerMixin):
         Parameters: X : DataFrame (input data)
         Returns: DataFrame (transformed data)
         """
-        print(f"df before DummyCreator:{X.shape}")
         return self.encoder_.transform(X)
 
 
@@ -337,7 +403,11 @@ class Scaler(BaseEstimator, TransformerMixin):
         Parameters: X : DataFrame (input data), y : DataFrame (optional, for API consistency)
         Returns: self : Scaler (fitted instance)
         """
-        self.scaler_.fit(X[self.numerical_features]) if self.numerical_features else self.scaler_.fit(X)
+        (
+            self.scaler_.fit(X[self.numerical_features])
+            if self.numerical_features
+            else self.scaler_.fit(X)
+        )
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
@@ -346,15 +416,17 @@ class Scaler(BaseEstimator, TransformerMixin):
         Parameters: X : DataFrame (input data)
         Returns: DataFrame (transformed data)
         """
-        print(f"df before Scaler:{X.shape}")
         X.loc[:, self.numerical_features] = (
-            self.scaler_.transform(X[self.numerical_features]) if self.numerical_features else self.scaler_.transform(X)
+            self.scaler_.transform(X[self.numerical_features])
+            if self.numerical_features
+            else self.scaler_.transform(X)
         )
         return X
 
 
 def create_data_transform_pipeline(
-    categorical_features: Optional[List[str]] = None, numerical_features: Optional[List[str]] = None
+    categorical_features: Optional[List[str]] = None,
+    numerical_features: Optional[List[str]] = None,
 ) -> Pipeline:
     """
     Create a pipeline for data preprocessing.
@@ -399,7 +471,7 @@ def fit_transform(
     ----------
     X_train : DataFrame
         Training data.
-    X_test : DataFrame
+    X_test : DataFramecreate_data_transform_pipeline
         Testing data.
     categorical_features : list of str, optional
         Categorical features to process. If None, all are processed.
@@ -412,15 +484,18 @@ def fit_transform(
     """
     categorical_features = X_train.select_dtypes(include=["object"]).columns.tolist()
     numerical_features = X_train.select_dtypes(exclude=["object"]).columns.tolist()
-    data_transform_pipeline = create_data_transform_pipeline(categorical_features, numerical_features)
+    data_transform_pipeline = create_data_transform_pipeline(
+        categorical_features, numerical_features
+    )
     X_train = data_transform_pipeline.fit_transform(X_train)
     X_test = data_transform_pipeline.transform(X_test)
-
 
     return X_train, X_test, data_transform_pipeline
 
 
-def write_model_pipeline(regressor: Callable, data_transform_pipeline: Callable, path: str) -> None:
+def write_model_pipeline(
+    regressor: Callable, data_transform_pipeline: Callable, path: str
+) -> None:
     """
     Save the regressor and the data transformation pipeline to a file.
     Args:
@@ -462,6 +537,7 @@ def read_model_pipeline(path: Optional[str] = "./data/") -> Tuple[Callable, Call
 
     return regressor, data_transform_pipeline
 
+
 def create_data_model(
     path: str,
     main_query: str,
@@ -491,7 +567,14 @@ def create_data_model(
     Returns:
     - None
     """
-    X_train, X_test, y_train, y_test = create_data(main_query, main_query_dtype, numerical_features, categorical_features, target, months)
+    X_train, X_test, y_train, y_test = create_data(
+        main_query,
+        main_query_dtype,
+        numerical_features,
+        categorical_features,
+        target,
+        months,
+    )
 
     X_train, X_test, data_transform_pipeline = fit_transform(X_train, X_test)
 
@@ -512,6 +595,7 @@ def create_data_model(
 
     return categorical_features, numerical_features
 
+
 class ModelStore(DataStoreBase):
     def __init__(self):
         super().__init__()
@@ -524,4 +608,7 @@ class ModelStore(DataStoreBase):
             self.regressor, self.data_transform_pipeline = read_model_pipeline()
 
     def get_logging_info(self):
-        return {"regressor_info": str(self.regressor), "data_transform_pipeline": str(self.data_transform_pipeline)}
+        return {
+            "regressor_info": str(self.regressor),
+            "data_transform_pipeline": str(self.data_transform_pipeline),
+        }
