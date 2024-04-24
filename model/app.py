@@ -1,55 +1,49 @@
 """App for price"""
+
 # get env variable
 import os
 
-# flask
-from flask import Flask, request, jsonify
+# fastapi
+from fastapi import FastAPI, Request, Response, HTTPException, status, Header
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel
+from typing import Union, List
 
 # periodical data read-in
 from threading import Thread
 
 import pandas as pd
+import time
 
 # config file
 import configparser
 
 # get loggers
 from buycycle.logger import Logger
-from buycycle.logger import KafkaLogger
 
-
-# sql queries and feature selection
-from src.driver import *
-
-from src.data import ModelStore
-
-# import the function from src
+# sql queries, feature selection and other functions from src
+from src.data import ModelStore, feature_engineering
 from src.strategies import GenericStrategy
-
-from src.helper import construct_input_df, get_field_value
+from src.helper import construct_input_df
 
 config_paths = "config/config.ini"
-
 config = configparser.ConfigParser()
 config.read(config_paths)
 
 path = "data/"
 
-app = Flask(__name__)
+# app = Flask(__name__)
+app = FastAPI()
 # read the environment from the docker environment variable
 environment = os.getenv("ENVIRONMENT")
 ab = os.getenv("AB")
 app_name = "price"
-app_version = 'stable-001'
-
-KAFKA_TOPIC = config["KAFKA"]["topic_price"]
-KAFKA_BROKER = config["KAFKA"]["broker"]
+app_version = "canary-001"
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
-logger = KafkaLogger(environment, ab, app_name,
-                     app_version, KAFKA_TOPIC, KAFKA_BROKER)
 
-logger.info("Flask app started")
+logger.info("FastAPI app started")
 
 # create data stores and load periodically
 model_store = ModelStore()
@@ -60,175 +54,187 @@ while True:
         model_store.read_data()
         break
     except Exception as e:
-        logger.error("Data could not initially be red, trying in 60sec")
+        logger.error("Data could not initially be read, trying in 60sec")
         time.sleep(60)
 
 # then read the data periodically
-model_loader = Thread(
-    target=model_store.read_data_periodically, args=(720, logger))
+model_loader = Thread(target=model_store.read_data_periodically, args=(720, logger))
 
 model_loader.start()
 
 
-@app.route("/")
-def home():
-    html = f"<h3>price</h3>"
-    return html.format(format)
+class PriceRequest(BaseModel):
+    """Class representing the price request"""
+
+    template_id: Union[int, None] = None
+    brake_type_code: Union[object, None] = None
+    frame_material_code: Union[object, None] = None
+    shifting_code: Union[object, None] = None
+    condition_code: Union[object, None] = None
+    sales_country_id: Union[int, None] = None
+    bike_type_id: Union[int, None] = None
+    bike_category_id: Union[int, None] = None
+    mileage_code: Union[object, None] = None
+    motor: Union[int, None] = None
+    bike_component_id: Union[int, None] = None
+    family_model_id: Union[int, None] = None
+    family_id: Union[int, None] = None
+    brand_id: Union[int, None] = None
+    color: Union[object, None] = None
+    is_mobile: Union[int, None] = None
+    is_ebike: Union[int, None] = None
+    is_frameset: Union[int, None] = None
+    msrp: Union[float, None] = None
+    bike_created_at_month: Union[int, None] = None
+    bike_created_at_year: Union[int, None] = None
+    bike_year: Union[int, None] = None
+    rider_height_min: Union[float, None] = None
+    rider_height_max: Union[float, None] = None
+    sales_duration: Union[int, None] = None
+    quality_score: Union[int, None] = None
 
 
-@app.route("/price_interval", methods=["POST"])
-def price():
+@app.get("/")
+async def home():
+    return {"msg": "price"}
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+
+@app.post("/price_interval")
+async def price_interval(
+    request_data: Union[PriceRequest, List[PriceRequest]],
+    strategy: str = Header(default="Generic"),
+):
     """take in bike data
-    the payload should be in the following format:
-
-    {
-        'template_id': 'Int64',
-        'msrp': 'Float64',
-        'bike_created_at_year': 'Int64',
-        'bike_created_at_month': 'Int64',
-        'bike_year': 'Int64',
-        'sales_duration': 'Int64',
-        'sales_country_id': 'Int64',
-        'bike_type_id': 'Int64',
-        'bike_category_id': 'Int64',
-        'mileage_code': 'object',
-        'motor': 'Int64',
-        'city': 'object',
-        'condition_code': 'object',
-        'frame_size': 'object',
-        'rider_height_min': 'Float64',
-        'rider_height_max': 'Float64',
-        'brake_type_code': 'object',
-        'frame_material_code': 'object',
-        'shifting_code': 'object',
-        'bike_component_id': 'Int64',
-        'color': 'object',
-        'family_model_id': 'Int64',
-        'family_id': 'Int64',
-        'brand_id': 'Int64',
-        'quality_score': 'Int64',
-        'is_mobile': 'Int64',
-        'currency_id': 'Int64',
-        'seller_id': 'Int64',
-        'is_ebike': 'Int64',
-        'is_frameset': 'Int64'
-    }
+    the payload should be in PriceRequest format
     """
-
-    # Get the JSON payload from the request
-    json_payload = request.json
-    # Check if the payload is a list of dictionaries (multiple bikes)
-    if isinstance(json_payload, list):
-        # Convert the list of dictionaries to a pandas DataFrame
-        price_payload = pd.DataFrame(json_payload)
+    # Convert the PriceRequest to a dataframe
+    if isinstance(request_data, list):
+        request_dic = []
+        for r in request_data:
+            request_dic.append(r.model_dump(exclude_unset=True))
+        price_payload = pd.DataFrame(request_dic)
     else:
-        # If it's a single dictionary (one bike), convert it to a DataFrame with an index
-        price_payload = pd.DataFrame([json_payload])
+        request_dic = request_data.model_dump(exclude_unset=True)
+        price_payload = pd.DataFrame([request_dic])
+
+    if price_payload.empty:
+        return Response(
+            content="no valid request values", status_code=status.HTTP_400_BAD_REQUEST
+        )
 
     # get target strategy, currently not implemented since we only have generic strategy
-    strategy_target = request.headers.get('strategy', 'NA')  # Provide a default value if not found
+    strategy_target = strategy  # Provide a default value if not found
 
-
-
-
-    features = ['template_id', 'msrp', 'bike_created_at_year', 'bike_created_at_month',
-                'bike_year', 'sales_duration', 'sales_country_id', 'bike_type_id',
-                'bike_category_id', 'mileage_code', 'motor', 'city', 'condition_code',
-                'frame_size', 'rider_height_min', 'rider_height_max', 'brake_type_code',
-                'frame_material_code', 'shifting_code', 'bike_component_id', 'color',
-                'family_model_id', 'family_id', 'brand_id', 'quality_score',
-                'is_mobile', 'currency_id', 'seller_id', 'is_ebike', 'is_frameset']
-
-    #filter out non features, in the payload
-    X_input = price_payload[price_payload.columns.intersection(features)]
-
-    X_constructed = construct_input_df(X_input, features)
+    # fill the missing data with np.nan
+    features = list(PriceRequest.model_fields.keys())
+    X_constructed = construct_input_df(price_payload, features)
+    X_feature_engineered = feature_engineering(X_constructed)
+    X_feature_engineered.drop(
+        ["bike_created_at_month", "bike_year"], axis=1, inplace=True
+    )
 
     with model_store._lock:
         generic_strategy = GenericStrategy(
-            model_store.regressor, model_store.data_transform_pipeline, logger)
+            model_store.regressor, model_store.data_transform_pipeline, logger
+        )
 
         quantiles = [0.2, 0.5, 0.8]
 
-        X_transformed = model_store.data_transform_pipeline.transform(X_constructed)
+        X_transformed = model_store.data_transform_pipeline.transform(
+            X_feature_engineered
+        )
 
         strategy, price, interval, error = generic_strategy.predict_price(
-            X=X_transformed, quantiles=quantiles)
+            X=X_transformed, quantiles=quantiles
+        )
 
         price = price.tolist()
         interval= interval.tolist()
-    # scale interval to 5% of price
-    new_interval = []
-    for i, p in zip(interval, price):
-        current_interval_size = i[1] - i[0]
-        desired_interval_size = p * 0.05
-        scaling_factor = desired_interval_size / current_interval_size
-        # Calculate the new interval bounds
-        new_lower_bound = round(i[0] * scaling_factor + p * (1 - scaling_factor))
-        new_upper_bound = round(i[1] * scaling_factor + p * (1 - scaling_factor))
-        new_interval.append([new_lower_bound, new_upper_bound])
-    interval = new_interval
+        # scale interval to 5% of price
+        new_interval = []
+        for i, p in zip(interval, price):
+            current_interval_size = i[1] - i[0]
+            desired_interval_size = p * 0.05
+            scaling_factor = desired_interval_size / current_interval_size
+            # Calculate the new interval bounds
+            new_lower_bound = round(i[0] * scaling_factor + p * (1 - scaling_factor))
+            new_upper_bound = round(i[1] * scaling_factor + p * (1 - scaling_factor))
+            new_interval.append([new_lower_bound, new_upper_bound])
+        interval = new_interval
 
-    logger.info(
-        strategy,
-        extra={
-            "X_input": X_input.to_dict(orient='records'),
-            "price": price,
-            "interval": interval,
-            "quantiles": quantiles,
-        },
-    )
-    if error:
-        # Return error response if it exists
-        logger.error(
-            "Error no price prediction available, exception: " + error)
-        return (
-            jsonify(
-                {"status": "error", "message": "Price prediction not available"}),
-            404,
+        logger.info(
+            strategy,
+            extra={
+                "price": price,
+                "interval": interval,
+                "quantiles": quantiles,
+                "X_input": request_dic,
+            },
         )
+        if error:
+            # Return error response if it exists
+            logger.error("Error no price prediction available, exception: {}".format(error))
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Price prediction not available",
+            )
 
-    else:
-        # Return success response with recommendation data and 200 OK
-        return (
-            jsonify(
-                {
-                    "status": "success",
-                    "strategy_target": strategy_target,
-                    "strategy": strategy,
-                    "quantiles": quantiles,
-                    "price": price,
-                    "interval": interval,
-                    "app_name": app_name,
-                    "app_version": app_version,
-                }
-            ),
-            200,
-        )
-
-
-# test this out, which erros do we need to handle
+        else:
+            # Return success response with recommendation data and 200 OK
+            return {
+                "status": "success",
+                "strategy_target": strategy_target,
+                "strategy": strategy,
+                "quantiles": quantiles,
+                "price": price,
+                "interval": interval,
+                "app_name": app_name,
+                "app_version": app_version,
+            }
 
 
 # Error handling for 400 Bad Request
-@app.errorhandler(400)
-def bad_request_error(e):
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
     # Log the error details using the provided logger
     logger.error(
-        "400 Bad Request:",
+        "400 Bad Request: {}".format(str(exc)),
         extra={
-            "info": "user_id, bike_id and n must be convertable to integers",
+            "info": "Invalid request body format",
         },
     )
-
-    return (
-        jsonify({"status": "error",
-                "message": "Bad Request, user_id, bike_id and n must be convertable to integers"}),
-        400,
+    # Construct a hint for the expected request body format
+    expected_format = PriceRequest.model_json_schema
+    # Return a JSON response with the error details and the hint
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "status": "error",
+            "message": f"400 Bad Request: {str(exc)}",
+            "hint": "The provided request body format is incorrect. "
+            "Please ensure it adheres to the expected format:",
+            "expected_format": expected_format,
+        },
     )
 
 
 # add 500 error handling
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=80)
+@app.exception_handler(500)
+def internal_server_error_handler(request: Request, exc: HTTPException):
+    """Log the error details using the provided logger"""
+    logger.error(
+        f"500 Internal Server Error: {str(exc)}",
+        extra={
+            "info": "Internal server error",
+        },
+    )
+    # Return a JSON response with the error details
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"status": "error", "message": "Internal Server Error: " + str(exc)},
+    )

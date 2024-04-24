@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import pandas as pd
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -22,7 +21,6 @@ import category_encoders as ce
 from joblib import dump, load
 from buycycle.data import sql_db_read, DataStoreBase
 from quantile_forest import RandomForestQuantileRegressor, ExtraTreesQuantileRegressor
-
 
 
 def train(
@@ -90,7 +88,7 @@ def test(
     """
     # Check if the model is a quantile regressor
     if isinstance(regressor, (RandomForestQuantileRegressor, ExtraTreesQuantileRegressor)):
-        strategy, preds, interval, error = predict_interval(X_transformed, regressor, quantiles, logger=None)
+        strategy, preds, interval, error = predict_interval(X_transformed, regressor, quantiles)
 
     else:
         preds = predict_point_estimate(X_transformed, regressor)
@@ -118,7 +116,7 @@ def predict_point_estimate(X_transformed: pd.DataFrame, regressor: Callable) -> 
 
 
 def predict_interval(
-        X_transformed: pd.DataFrame, regressor: Callable, quantiles: List[float], logger: Callable
+    X_transformed: pd.DataFrame, regressor: Callable, quantiles: List[float], logger: Callable
 ) -> Tuple[str, np.ndarray, np.ndarray, str]:
     """
     Transform X and predicts target variable as well as prediction interval.
@@ -126,7 +124,6 @@ def predict_interval(
         X_transformed: Transformed Features.
         regressor: Trained model.
         quantiles: Quantiles for prediction intervals.
-        logger: logger
     Returns:
         preds: Predictions.
         interval: Prediction intervals.
@@ -298,4 +295,3 @@ def compare_models(
         print("{} Test error: {}".format(model["name"], score))
     print("\nBest Model: {}, Error: {}".format(best_model["name"], best_score))
     return best_model["model"]
-

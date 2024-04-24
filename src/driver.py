@@ -2,14 +2,13 @@ import pandas as pd
 
 target = "sales_price"
 
+# 17 categorical features
 categorical_features = [
     "template_id",
-    "city",
     "brake_type_code",
     "frame_material_code",
     "shifting_code",
     "condition_code",
-    "bike_created_at_month",
     "sales_country_id",
     "bike_type_id",
     "bike_category_id",
@@ -20,22 +19,21 @@ categorical_features = [
     "family_id",
     "brand_id",
     "color",
-    "quality_score",
     "is_mobile",
-    "currency_id",
-    "seller_id",
     "is_ebike",
     "is_frameset",
-    "frame_size",
 ]
 
+# 8 numerical fetures
 numerical_features = [
     "msrp",
+    "bike_created_at_month",
     "bike_created_at_year",
     "bike_year",
     "rider_height_min",
     "rider_height_max",
     "sales_duration",
+    "quality_score",
 ]
 
 test_query = """
@@ -111,13 +109,11 @@ main_query = """
                 bikes.bike_category_id as bike_category_id,
                 bikes.mileage_code as mileage_code,
                 bikes.motor as motor,
-                bikes.city as city,
 
                 bikes.condition_code as condition_code,
 
 
 
-                bike_additional_infos.frame_size as frame_size,
                 bike_additional_infos.rider_height_min as rider_height_min,
                 bike_additional_infos.rider_height_max as rider_height_max,
 
@@ -148,10 +144,8 @@ main_query = """
                 bikes.is_mobile as is_mobile,
 
                 -- currency
-                bikes.currency_id as currency_id,
 
                 -- seller id
-                bikes.seller_id as seller_id,
 
                 -- is_frameset
                 bike_template_additional_infos.is_ebike as is_ebike,
@@ -176,10 +170,9 @@ main_query = """
 
                 WHERE bikes.status = 'sold'
                 AND (bookings.status = 'paid_out' OR bookings.status = 'success' OR bookings.status = 'sell_link_confirm' OR bookings.status = 'capture' OR bookings.status = 'paid')
-
-
              """
 
+# 27 features(id, is_mobile) and 1 label
 main_query_dtype = {
     "id": pd.Int64Dtype(),
     "template_id": pd.Int64Dtype(),
@@ -194,8 +187,6 @@ main_query_dtype = {
     "bike_category_id": pd.Int64Dtype(),
     "mileage_code": str,
     "motor": pd.Int64Dtype(),
-    "city": str,
-    "frame_size": str,
     "rider_height_min": pd.Float64Dtype(),
     "rider_height_max": pd.Float64Dtype(),
     "brake_type_code": str,
@@ -209,8 +200,6 @@ main_query_dtype = {
     "brand_id": pd.Int64Dtype(),
     "quality_score": pd.Int64Dtype(),
     "is_mobile": pd.Int64Dtype(),
-    "currency_id": pd.Int64Dtype(),
-    "seller_id": pd.Int64Dtype(),
     "is_ebike": pd.Int64Dtype(),
     "is_frameset": pd.Int64Dtype(),
 }

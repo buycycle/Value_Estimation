@@ -48,6 +48,5 @@ ENV AB=${AB}
 
 # USER appuser
 
-# gunicron for production
-CMD ["gunicorn", "-w 4", "-b", "0.0.0.0:80", "app:app"]
-
+# uvicorn(fastapi) for production
+# CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "80"]

@@ -1,8 +1,14 @@
 import sys
 import time
-from src.driver import main_query, main_query_dtype, categorical_features, numerical_features, target
+from src.driver import (
+    main_query,
+    main_query_dtype,
+    categorical_features,
+    numerical_features,
+    target,
+)
 
-from src.data import ModelStore, read_data, fit_transform, create_data, create_data_model
+from src.data import create_data_model
 from quantile_forest import ExtraTreesQuantileRegressor
 
 # if there is a command line argument, use it as path, else use './data/'
@@ -12,8 +18,8 @@ create_data_model(
     path=path,
     main_query=main_query,
     main_query_dtype=main_query_dtype,
-    categorical_features=categorical_features,
     numerical_features=numerical_features,
+    categorical_features=categorical_features,
     model=ExtraTreesQuantileRegressor,
     target=target,
     months=2,
