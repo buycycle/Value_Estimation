@@ -143,7 +143,7 @@ async def price_interval(
             model_store.regressor, model_store.data_transform_pipeline, logger
         )
 
-        quantiles = [0.05, 0.5, 0.95]
+        quantiles = [0.2, 0.5, 0.8]
 
         X_transformed = model_store.data_transform_pipeline.transform(
             X_feature_engineered
@@ -154,37 +154,48 @@ async def price_interval(
         )
 
         price = price.tolist()
-        interval = interval.tolist()
+        interval= interval.tolist()
+        # scale interval to 5% of price
+        new_interval = []
+        for i, p in zip(interval, price):
+            current_interval_size = i[1] - i[0]
+            desired_interval_size = p * 0.05
+            scaling_factor = desired_interval_size / current_interval_size
+            # Calculate the new interval bounds
+            new_lower_bound = round(i[0] * scaling_factor + p * (1 - scaling_factor))
+            new_upper_bound = round(i[1] * scaling_factor + p * (1 - scaling_factor))
+            new_interval.append([new_lower_bound, new_upper_bound])
+        interval = new_interval
 
-    logger.info(
-        strategy,
-        extra={
-            "price": price,
-            "interval": interval,
-            "quantiles": quantiles,
-            "X_input": request_dic,
-        },
-    )
-    if error:
-        # Return error response if it exists
-        logger.error("Error no price prediction available, exception: {}".format(error))
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Price prediction not available",
+        logger.info(
+            strategy,
+            extra={
+                "price": price,
+                "interval": interval,
+                "quantiles": quantiles,
+                "X_input": request_dic,
+            },
         )
+        if error:
+            # Return error response if it exists
+            logger.error("Error no price prediction available, exception: {}".format(error))
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Price prediction not available",
+            )
 
-    else:
-        # Return success response with recommendation data and 200 OK
-        return {
-            "status": "success",
-            "strategy_target": strategy_target,
-            "strategy": strategy,
-            "quantiles": quantiles,
-            "price": price,
-            "interval": interval,
-            "app_name": app_name,
-            "app_version": app_version,
-        }
+        else:
+            # Return success response with recommendation data and 200 OK
+            return {
+                "status": "success",
+                "strategy_target": strategy_target,
+                "strategy": strategy,
+                "quantiles": quantiles,
+                "price": price,
+                "interval": interval,
+                "app_name": app_name,
+                "app_version": app_version,
+            }
 
 
 # Error handling for 400 Bad Request

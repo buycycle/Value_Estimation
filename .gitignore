@@ -1,12 +1,7 @@
-# emacs
-*~
 
 # compiled
 *.pyc
 
-# IntelliJ
-.idea
-*.iml
 
 # config
 config/config.ini
@@ -17,7 +12,6 @@ data
 
 plot
 
+# notebook
+notebook/.ipynb_checkpoints
 
-# notebook.ipynb and notebook folder
-notebook.ipynb
-notebook

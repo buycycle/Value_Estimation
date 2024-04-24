@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Copy source code to working directory
 COPY model/app.py /app/
-
+COPY create_data.py /app/
 
 # Copy app dependencies
 RUN mkdir /app/src
