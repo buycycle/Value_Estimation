@@ -2,7 +2,7 @@ import pandas as pd
 
 target = "sales_price"
 
-# 17 categorical features
+# 18 categorical features
 categorical_features = [
     "template_id",
     "brake_type_code",
@@ -172,7 +172,7 @@ main_query = """
                 AND (bookings.status = 'paid_out' OR bookings.status = 'success' OR bookings.status = 'sell_link_confirm' OR bookings.status = 'capture' OR bookings.status = 'paid')
              """
 
-# 27 features(id, is_mobile) and 1 label
+# id, 26 features and 1 label
 main_query_dtype = {
     "id": pd.Int64Dtype(),
     "template_id": pd.Int64Dtype(),

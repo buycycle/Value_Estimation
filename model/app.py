@@ -134,9 +134,9 @@ async def price_interval(
     features = list(PriceRequest.model_fields.keys())
     X_constructed = construct_input_df(price_payload, features)
     X_feature_engineered = feature_engineering(X_constructed)
-    X_feature_engineered.drop(
-        ["bike_created_at_month", "bike_year"], axis=1, inplace=True
-    )
+    # X_feature_engineered.drop(
+    #     ["bike_created_at_month", "bike_year"], axis=1, inplace=True
+    # )
 
     with model_store._lock:
         generic_strategy = GenericStrategy(
@@ -154,7 +154,7 @@ async def price_interval(
         )
 
         price = price.tolist()
-        interval= interval.tolist()
+        interval = interval.tolist()
         # scale interval to 5% of price
         new_interval = []
         for i, p in zip(interval, price):
@@ -178,7 +178,9 @@ async def price_interval(
         )
         if error:
             # Return error response if it exists
-            logger.error("Error no price prediction available, exception: {}".format(error))
+            logger.error(
+                "Error no price prediction available, exception: {}".format(error)
+            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Price prediction not available",
