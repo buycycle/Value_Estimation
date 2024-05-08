@@ -13,5 +13,6 @@ data
 plot
 
 # notebook
-notebook/.ipynb_checkpoints
+*.ipynb
+
 
