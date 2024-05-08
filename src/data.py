@@ -58,7 +58,6 @@ def clean_data(
     numerical_features: List[str],
     categorical_features: List[str],
     target: str = "sales_price",
-    iqr_limit: float = 2,
 ) -> pd.DataFrame:
     """
     Cleans data by removing outliers and unnecessary data.
@@ -74,24 +73,11 @@ def clean_data(
     # only keep categorical and numerical features
     df = df[categorical_features + numerical_features + [target]]
     # remove custom template idf and where target = NA
-    # df = df[df["template_id"] != 79204].dropna(subset=[target])
+    df = df[df["template_id"] != 79204].dropna(subset=[target])
     df = df[df[target] > 400]
     df = df[df[target] < 15000]
     # exclude data with the really low price(pontential fake bike)
     df = df[df[target] > df["msrp"] * 0.3]
-
-    # model 3: exclude msrp
-    # numerical_features = [x for x in numerical_features if x != "msrp"]
-    # for col in numerical_features:
-    #     if col in df.columns:
-    #         q1, q3 = df[col].quantile(0.25), df[col].quantile(0.75)
-    #         iqr = q3 - q1
-    #         df = df[
-    #             ~(
-    #                 (df[col] < (q1 - iqr_limit * iqr))
-    #                 | (df[col] > (q3 + iqr_limit * iqr))
-    #             )
-    #         ]
 
     # remove duplicates
     df = df.loc[~df.index.duplicated(keep="last")]
@@ -103,11 +89,15 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     df["bike_created_at_month_sin"] = np.sin(
         2 * np.pi * df["bike_created_at_month"] / 12
     )
+
+    df["bike_created_at_month_cos"] = np.cos(
+        2 * np.pi * df["bike_created_at_month"] / 12
+    )
+
     # create bike age from bike_year
     df["bike_age"] = pd.to_datetime("today").year - df["bike_year"]
     df.drop(["bike_created_at_month", "bike_year"], axis=1, inplace=True)
 
-    # drop 'bike_created_at_month', 'bike_year' in split function, because it's needed to split data
     return df
 
 
@@ -124,7 +114,7 @@ def train_test_split_date(df: pd.DataFrame, target: str, test_size: float):
     X = df.drop([target], axis=1)
     y = df[target]
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=42
+        X, y, test_size=0.01, random_state=20
     )
 
     return X_train, y_train, X_test, y_test
@@ -137,7 +127,6 @@ def create_data(
     categorical_features: List[str],
     target: str,
     test_size: float,
-    path: str = "data/",
 ):
     """
     Fetches, cleans, splits, and saves data.

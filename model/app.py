@@ -134,9 +134,6 @@ async def price_interval(
     features = list(PriceRequest.model_fields.keys())
     X_constructed = construct_input_df(price_payload, features)
     X_feature_engineered = feature_engineering(X_constructed)
-    # X_feature_engineered.drop(
-    #     ["bike_created_at_month", "bike_year"], axis=1, inplace=True
-    # )
 
     with model_store._lock:
         generic_strategy = GenericStrategy(
