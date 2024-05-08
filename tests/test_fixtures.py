@@ -34,7 +34,7 @@ def testdata():
         categorical_features=categorical_features,
         model=ExtraTreesQuantileRegressor,
         target=target,
-        months=2,
+        test_size=0.12,
         parameters={
             "n_jobs": -1,  # Use all cores for training
         },

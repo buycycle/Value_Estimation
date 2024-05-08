@@ -22,8 +22,10 @@ create_data_model(
     categorical_features=categorical_features,
     model=ExtraTreesQuantileRegressor,
     target=target,
-    months=2,
-    parameters=None,
+    test_size=0.12,
+    parameters={
+        "n_jobs": -1,  # Use all cores for training
+    },
 )
 
 print("created_data_model")

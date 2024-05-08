@@ -15,7 +15,7 @@ from sklearn.metrics import (
     mean_absolute_error,
     mean_absolute_percentage_error,
 )
-from sklearn.model_selection import cross_val_score, GridSearchCV
+from sklearn.model_selection import cross_val_score, GridSearchCV, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 import category_encoders as ce
@@ -30,7 +30,7 @@ import threading  # for data read lock
 def get_data(
     main_query: str,
     main_query_dtype: str,
-    index_col: str = "sales_price",
+    index_col: str = "id",
     config_paths: str = "config/config.ini",
 ) -> pd.DataFrame:
     """
@@ -38,7 +38,7 @@ def get_data(
     Args:
         main_query: SQL query for main data.
         main_query_dtype: Data type for main query.
-        index_col: Index column for DataFrame. Default is 'sales_price'.
+        index_col: Index column for DataFrame. Default is 'id'.
         config_paths: Path to configuration file. Default is 'config/config.ini'.
     Returns:
         DataFrame: Main data.
@@ -74,19 +74,25 @@ def clean_data(
     # only keep categorical and numerical features
     df = df[categorical_features + numerical_features + [target]]
     # remove custom template idf and where target = NA
-    df = df[df["template_id"] != 79204].dropna(subset=[target])
+    # df = df[df["template_id"] != 79204].dropna(subset=[target])
     df = df[df[target] > 400]
     df = df[df[target] < 15000]
-    for col in numerical_features:
-        if col in df.columns:
-            q1, q3 = df[col].quantile(0.25), df[col].quantile(0.75)
-            iqr = q3 - q1
-            df = df[
-                ~(
-                    (df[col] < (q1 - iqr_limit * iqr))
-                    | (df[col] > (q3 + iqr_limit * iqr))
-                )
-            ]
+    # exclude data with the really low price(pontential fake bike)
+    df = df[df[target] > df["msrp"] * 0.3]
+
+    # model 3: exclude msrp
+    # numerical_features = [x for x in numerical_features if x != "msrp"]
+    # for col in numerical_features:
+    #     if col in df.columns:
+    #         q1, q3 = df[col].quantile(0.25), df[col].quantile(0.75)
+    #         iqr = q3 - q1
+    #         df = df[
+    #             ~(
+    #                 (df[col] < (q1 - iqr_limit * iqr))
+    #                 | (df[col] > (q3 + iqr_limit * iqr))
+    #             )
+    #         ]
+
     # remove duplicates
     df = df.loc[~df.index.duplicated(keep="last")]
     return df
@@ -99,44 +105,26 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     )
     # create bike age from bike_year
     df["bike_age"] = pd.to_datetime("today").year - df["bike_year"]
+    df.drop(["bike_created_at_month", "bike_year"], axis=1, inplace=True)
 
-    # add bike_created_at_month_sin to numerical features
-    # df = df.drop(columns=['bike_created_at_month', 'bike_year'])
-
+    # drop 'bike_created_at_month', 'bike_year' in split function, because it's needed to split data
     return df
 
 
-def train_test_split_date(df, target, months):
+def train_test_split_date(df: pd.DataFrame, target: str, test_size: float):
     """
     Splits data into training and test sets based on a date cutoff.
     Args:
-        df: DataFrame to split.
+        df: DataFrame to split, including target column
         target: Target column.
-        months: Number of months before current date to use as cutoff.
+        size: the size of test data, default = 0.12
     Returns:
         X_train, y_train, X_test, y_test: Training and test sets.
     """
-    df["bike_created_at"] = pd.to_datetime(
-        df["bike_created_at_year"].astype(str)
-        + df["bike_created_at_month"].astype(str),
-        format="%Y%m",
-    )
-    cutoff_date = pd.to_datetime("today") - pd.DateOffset(months=months)
-    train, test = (
-        df[df["bike_created_at"] <= cutoff_date],
-        df[df["bike_created_at"] > cutoff_date],
-    )
-    X_train, y_train = (
-        train.drop(
-            [target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1
-        ),
-        train[target],
-    )
-    X_test, y_test = (
-        test.drop(
-            [target, "bike_created_at", "bike_created_at_month", "bike_year"], axis=1
-        ),
-        test[target],
+    X = df.drop([target], axis=1)
+    y = df[target]
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=42
     )
 
     return X_train, y_train, X_test, y_test
@@ -148,7 +136,7 @@ def create_data(
     numerical_features: List[str],
     categorical_features: List[str],
     target: str,
-    months: int,
+    test_size: float,
     path: str = "data/",
 ):
     """
@@ -166,7 +154,9 @@ def create_data(
         frac=1
     )
     df = feature_engineering(df)
-    X_train, y_train, X_test, y_test = train_test_split_date(df, target, months)
+    X_train, y_train, X_test, y_test = train_test_split_date(
+        df, target, test_size=test_size
+    )
     return X_train, X_test, y_train, y_test
 
 
@@ -185,27 +175,27 @@ def read_data(path: str = "data/"):
     return X_train, y_train, X_test, y_test
 
 
-class ModeImputer(BaseEstimator, TransformerMixin):
-    """
-    Class to fill NA values with mode
-    """
+# class ModeImputer(BaseEstimator, TransformerMixin):
+#     """
+#     Class to fill NA values with mode
+#     """
 
-    def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> "ModeImputer":
-        """
-        Fit the Imputer on X.
-        Parameters: X : DataFrame (input data), y : DataFrame (optional, for API consistency)
-        Returns: self : Imputer (fitted instance)
-        """
-        self.most_frequent_ = pd.DataFrame(X).mode().iloc[0]
-        return self
+#     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> "ModeImputer":
+#         """
+#         Fit the Imputer on X.
+#         Parameters: X : DataFrame (input data), y : DataFrame (optional, for API consistency)
+#         Returns: self : Imputer (fitted instance)
+#         """
+#         self.most_frequent_ = pd.DataFrame(X).mode().iloc[0]
+#         return self
 
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        """
-        Fill NA values with mode.
-        Parameters: X : DataFrame (input data)
-        Returns: DataFrame (transformed data)
-        """
-        return pd.DataFrame(X).fillna(self.most_frequent_)
+#     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+#         """
+#         Fill NA values with mode.
+#         Parameters: X : DataFrame (input data)
+#         Returns: DataFrame (transformed data)
+#         """
+#         return pd.DataFrame(X).fillna(self.most_frequent_)
 
 
 class MissForestImputer(BaseEstimator, TransformerMixin):
@@ -484,6 +474,40 @@ def fit_transform(
     """
     categorical_features = X_train.select_dtypes(include=["object"]).columns.tolist()
     numerical_features = X_train.select_dtypes(exclude=["object"]).columns.tolist()
+    # 18 categorical features
+    # categorical_features = [
+    #     "template_id",
+    #     "brake_type_code",
+    #     "frame_material_code",
+    #     "shifting_code",
+    #     "condition_code",
+    #     "sales_country_id",
+    #     "bike_type_id",
+    #     "bike_category_id",
+    #     "mileage_code",
+    #     "motor",
+    #     "bike_component_id",
+    #     "family_model_id",
+    #     "family_id",
+    #     "brand_id",
+    #     "color",
+    #     "is_mobile",
+    #     "is_ebike",
+    #     "is_frameset",
+    # ]
+
+    # # 8 numerical fetures
+    # numerical_features = [
+    #     "msrp",
+    #     "bike_created_at_year",
+    #     "rider_height_min",
+    #     "rider_height_max",
+    #     "sales_duration",
+    #     "quality_score",
+    #     "bike_created_at_month_sin",
+    #     "bike_age",
+    # ]
+
     data_transform_pipeline = create_data_transform_pipeline(
         categorical_features, numerical_features
     )
@@ -546,7 +570,7 @@ def create_data_model(
     categorical_features: List[str],
     model: BaseEstimator,
     target: str,
-    months: int,
+    test_size: float = 0.12,
     parameters: Optional[Dict[str, Union[int, float]]] = None,
 ) -> None:
     """
@@ -573,7 +597,7 @@ def create_data_model(
         numerical_features,
         categorical_features,
         target,
-        months,
+        test_size,
     )
 
     X_train, X_test, data_transform_pipeline = fit_transform(X_train, X_test)
@@ -587,13 +611,13 @@ def create_data_model(
         scoring=mean_absolute_percentage_error,
     )
 
-    X_train.to_pickle(path + "X_train.pkl")
-    y_train.to_pickle(path + "y_train.pkl")
-    X_test.to_pickle(path + "X_test.pkl")
-    y_test.to_pickle(path + "y_test.pkl")
+    X_train.to_pickle(os.path.join(path, "X_train.pkl"))
+    y_train.to_pickle(os.path.join(path, "y_train.pkl"))
+    X_test.to_pickle(os.path.join(path, "X_test.pkl"))
+    y_test.to_pickle(os.path.join(path, "y_test.pkl"))
     write_model_pipeline(regressor, data_transform_pipeline, path)
 
-    return categorical_features, numerical_features
+    # return categorical_features, numerical_features
 
 
 class ModelStore(DataStoreBase):
