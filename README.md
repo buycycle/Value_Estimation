@@ -155,11 +155,22 @@ Headers:
 
 Example:
     ```bash
+ab
+    curl -i -X POST price.buycycle.com/price_interval \
+        -H "Content-Type: application/json" \
+        -H "strategy: Generic" \
+        -H "version: canary-001" \
+        -d '[{"user_id": 123, "distinct_id": "abc123", "bike_id": 456, "family_id": 12, "msrp": 1200}, {}]'
+dev
     curl -i -X POST dev.price.buycycle.com/price_interval \
         -H "Content-Type: application/json" \
         -H "strategy: Generic" \
         -H "version: canary-001" \
         -d '[{"user_id": 123, "distinct_id": "abc123", "bike_id": 456, "family_id": 12, "msrp": 1200}, {}]'
+
+
+local
+    curl -i -X POST 0.0.0.0:8000/price_interval...
     ```
 
 Return:
