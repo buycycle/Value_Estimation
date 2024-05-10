@@ -30,7 +30,7 @@ def train(
     target: str,
     parameters: Optional[Dict[str, Union[int, float]]] = None,
     scoring: Callable = mean_absolute_percentage_error,
-) -> Tuple[Callable, Callable]:
+) -> BaseEstimator:
     """
     Trains the model.
     Args:
@@ -52,7 +52,9 @@ def train(
     regressor.fit(X_train, y_train)
 
     # Check if the model is a quantile regressor
-    if isinstance(regressor, (RandomForestQuantileRegressor, ExtraTreesQuantileRegressor)):
+    if isinstance(
+        regressor, (RandomForestQuantileRegressor, ExtraTreesQuantileRegressor)
+    ):
         preds = regressor.predict(X_train, quantiles=[0.5])
     else:
         preds = regressor.predict(X_train)
@@ -87,8 +89,12 @@ def test(
         error
     """
     # Check if the model is a quantile regressor
-    if isinstance(regressor, (RandomForestQuantileRegressor, ExtraTreesQuantileRegressor)):
-        strategy, preds, interval, error = predict_interval(X_transformed, regressor, quantiles)
+    if isinstance(
+        regressor, (RandomForestQuantileRegressor, ExtraTreesQuantileRegressor)
+    ):
+        strategy, preds, interval, error = predict_interval(
+            X_transformed, regressor, quantiles
+        )
 
     else:
         preds = predict_point_estimate(X_transformed, regressor)
@@ -101,7 +107,9 @@ def test(
     return strategy, preds, interval, error
 
 
-def predict_point_estimate(X_transformed: pd.DataFrame, regressor: Callable) -> np.ndarray:
+def predict_point_estimate(
+    X_transformed: pd.DataFrame, regressor: Callable
+) -> np.ndarray:
     """
     Transform X and predicts target variable.
     Args:
@@ -116,7 +124,10 @@ def predict_point_estimate(X_transformed: pd.DataFrame, regressor: Callable) -> 
 
 
 def predict_interval(
-    X_transformed: pd.DataFrame, regressor: Callable, quantiles: List[float], logger: Callable
+    X_transformed: pd.DataFrame,
+    regressor: Callable,
+    quantiles: List[float],
+    logger: Callable,
 ) -> Tuple[str, np.ndarray, np.ndarray, str]:
     """
     Transform X and predicts target variable as well as prediction interval.
@@ -169,7 +180,9 @@ def check_in_interval(
         result: DataFrame with actual values, predictions, prediction intervals, and whether actual values are within prediction intervals.
     """
     X_train, y_train, X_test, y_test = read_data()
-    X_train, X_test, data_transform_pipeline = fit_transform(X_train, X_test, categorical_features, numerical_features)
+    X_train, X_test, data_transform_pipeline = fit_transform(
+        X_train, X_test, categorical_features, numerical_features
+    )
 
     regressor = train(
         X_train,
@@ -179,14 +192,25 @@ def check_in_interval(
         parameters,
         scoring=mean_absolute_percentage_error,
     )
-    strategy, preds, interval, error = test(X_test, y_test, regressor, data_transform_pipeline, quantiles=quantiles)
+    strategy, preds, interval, error = test(
+        X_test, y_test, regressor, data_transform_pipeline, quantiles=quantiles
+    )
     preds = pd.DataFrame(preds, columns=["prediction"])
     interval = pd.DataFrame(interval, columns=["low", "high"])
 
-    result = pd.concat([y_test.reset_index(drop=True), preds.reset_index(drop=True), interval.reset_index(drop=True)], axis=1)
+    result = pd.concat(
+        [
+            y_test.reset_index(drop=True),
+            preds.reset_index(drop=True),
+            interval.reset_index(drop=True),
+        ],
+        axis=1,
+    )
 
     result.index = y_test.index
-    result["in_range"] = result.apply(lambda row: 1 if row["low"] <= row[0] <= row["high"] else 0, axis=1)
+    result["in_range"] = result.apply(
+        lambda row: 1 if row["low"] <= row[0] <= row["high"] else 0, axis=1
+    )
     in_range = result.in_range.sum() / len(result.in_range)
 
     print("{} quantiles: {} in range".format(quantiles, in_range))
@@ -230,8 +254,12 @@ def finetune_model(
     - The best estimator found by grid search.
     """
     X_train, y_train, X_test, y_test = read_data()
-    X_train, X_test, data_transform_pipeline = fit_transform(X_train, X_test, categorical_features, numerical_features)
-    grid = GridSearchCV(model, param_grid, scoring=scoring, cv=5, n_jobs=n_jobs, verbose=verbose)
+    X_train, X_test, data_transform_pipeline = fit_transform(
+        X_train, X_test, categorical_features, numerical_features
+    )
+    grid = GridSearchCV(
+        model, param_grid, scoring=scoring, cv=5, n_jobs=n_jobs, verbose=verbose
+    )
     grid.fit(X_train, y_train)
     print("Best parameters: {}".format(grid.best_params_))
     print("Best cross-validation score: {:.2f}".format(grid.best_score_))
@@ -272,7 +300,9 @@ def compare_models(
     - The best model class after comparison.
     """
     X_train, y_train, X_test, y_test = read_data()
-    X_train, X_test, data_transform_pipeline = fit_transform(X_train, X_test, categorical_features, numerical_features)
+    X_train, X_test, data_transform_pipeline = fit_transform(
+        X_train, X_test, categorical_features, numerical_features
+    )
     best_model = None
     best_score = np.inf
     for model in models:

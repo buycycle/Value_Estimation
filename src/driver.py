@@ -2,7 +2,7 @@ import pandas as pd
 
 target = "sales_price"
 
-# 17 categorical features
+# 18 categorical features
 categorical_features = [
     "template_id",
     "brake_type_code",
@@ -147,9 +147,9 @@ main_query = """
 
                 -- seller id
 
-                -- is_frameset
-                bike_template_additional_infos.is_ebike as is_ebike,
-                bike_template_additional_infos.is_frameset as is_frameset
+                COALESCE(bike_template_additional_infos.is_ebike, 0) as is_ebike,
+                COALESCE(bike_template_additional_infos.is_frameset, 0) as is_frameset,
+
 
 
 
@@ -163,7 +163,7 @@ main_query = """
                 join quality_scores on bikes.id = quality_scores.bike_id
 
 
-                join bike_template_additional_infos on bikes.bike_template_id = bike_template_additional_infos.bike_template_id
+                left join bike_template_additional_infos on bikes.bike_template_id = bike_template_additional_infos.bike_template_id
 
                 join bike_additional_infos on bikes.id = bike_additional_infos.bike_id
 
@@ -172,7 +172,7 @@ main_query = """
                 AND (bookings.status = 'paid_out' OR bookings.status = 'success' OR bookings.status = 'sell_link_confirm' OR bookings.status = 'capture' OR bookings.status = 'paid')
              """
 
-# 27 features(id, is_mobile) and 1 label
+# id, 26 features and 1 label
 main_query_dtype = {
     "id": pd.Int64Dtype(),
     "template_id": pd.Int64Dtype(),
