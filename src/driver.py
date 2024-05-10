@@ -147,9 +147,9 @@ main_query = """
 
                 -- seller id
 
-                COALESCE(bike_template_additional_infos.is_ebike, 0) as is_ebike,
-                COALESCE(bike_template_additional_infos.is_frameset, 0) as is_frameset,
-
+                -- is_frameset
+                bike_template_additional_infos.is_ebike as is_ebike,
+                bike_template_additional_infos.is_frameset as is_frameset
 
 
 
@@ -163,7 +163,7 @@ main_query = """
                 join quality_scores on bikes.id = quality_scores.bike_id
 
 
-                left join bike_template_additional_infos on bikes.bike_template_id = bike_template_additional_infos.bike_template_id
+                join bike_template_additional_infos on bikes.bike_template_id = bike_template_additional_infos.bike_template_id
 
                 join bike_additional_infos on bikes.id = bike_additional_infos.bike_id
 
