@@ -92,13 +92,14 @@ def test(
     if isinstance(
         regressor, (RandomForestQuantileRegressor, ExtraTreesQuantileRegressor)
     ):
-        strategy, preds, interval, error = predict_interval(
+        strategy, preds, interval, error = predict_price_interval(
             X_transformed, regressor, quantiles
         )
 
     else:
         preds = predict_point_estimate(X_transformed, regressor)
         interval = None
+
     pd.DataFrame(preds).to_pickle("data/preds.pkl")
 
     score = scoring(y, preds)
@@ -123,7 +124,7 @@ def predict_point_estimate(
     return preds
 
 
-def predict_interval(
+def predict_price_interval(
     X_transformed: pd.DataFrame,
     regressor: Callable,
     quantiles: List[float],
@@ -142,15 +143,68 @@ def predict_interval(
     """
     strategy = "Generic"
     error = None
-    preds = np.array([])
-    interval = np.array([])
+    preds = []
+    interval = []
     try:
         # Make predictions using the regressor and the specified quantiles
         predict = regressor.predict(X_transformed, quantiles)
-
         # Extract the median prediction and the prediction intervals
         preds = predict[:, 1]
         interval = predict[:, [0, 2]]
+
+        preds = [round(x, 2) for x in preds]
+        # # scale interval to 5% of price
+        new_interval = []
+        for i, p in zip(interval, preds):
+            current_interval_size = i[1] - i[0]
+            desired_interval_size = p * 0.05
+            scaling_factor = desired_interval_size / current_interval_size
+            # Calculate the new interval bounds
+            new_lower_bound = round(i[0] * scaling_factor + p * (1 - scaling_factor))
+            new_upper_bound = round(i[1] * scaling_factor + p * (1 - scaling_factor))
+            new_interval.append([new_lower_bound, new_upper_bound])
+        interval = new_interval
+
+    except Exception as e:
+        # If an error occurs, capture the error message
+        error = str(e)
+
+    # Return the predictions, intervals, and any error message
+    return strategy, preds, interval, error
+
+
+# To do: add high/low price adjuster
+def predict_price(
+    X_transformed: pd.DataFrame,
+    regressor: Callable,
+    logger: Callable,
+    intervalrange: float = 0.05,
+) -> Tuple[str, np.ndarray, np.ndarray, str]:
+    """
+    Transform X and predicts target variable and set intervalrange of price as interval.
+    Args:
+        X_transformed: Transformed Features.
+        regressor: Trained model.
+        intervalrange: For calculating intervals.
+    Returns:
+        preds: Predictions.
+        interval: Prediction intervals.
+        error: error message, if any
+    """
+    strategy = "Generic"
+    error = None
+    preds = []
+    interval = []
+    try:
+        # Make predictions using the regressor and the specified quantiles
+        preds = regressor.predict(X_transformed)
+        preds = [round(x, 2) for x in preds]
+        # scale interval to 5% of price
+        interval = [
+            [round(p - intervalrange / 2 * p, 2), round(p + intervalrange / 2 * p, 2)]
+            for p in preds
+        ]
+
     except Exception as e:
         # If an error occurs, capture the error message
         error = str(e)
