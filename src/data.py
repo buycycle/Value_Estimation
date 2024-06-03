@@ -134,10 +134,12 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     )
     # set missing/problematic bike_year to 2018 before doing inflation calculate
     df["bike_year"] = df["bike_year"].apply(
-        lambda x: 2018 if pd.isnull(x) or x < 1900 else x
+        lambda x: 2018 if pd.isnull(x) or x < 1900 or x > current_year else x
     )
-    # adjust msrp to bike_year according to the EU inflation rate
-    df["merge_year"] = df["bike_year"].apply(lambda x: 2012 if x < 2012 else x)
+
+    # Todo, add inflation to the msrp, currently this leads to the issue with price over smrp
+    # adjust msrp to bike_year according to the EU inflation rate, backtracking only to 2020
+    df["merge_year"] = df["bike_year"].apply(lambda x: 2020 if x < 2020 else x)
     df = pd.merge(
         df, cumulative_inflation_df, left_on="merge_year", right_on="year", how="left"
     )
@@ -399,13 +401,6 @@ class MissForestImputer(BaseEstimator, TransformerMixin):
                 X_transformed[col] = self.label_encoders[col].inverse_transform(
                     imputed_labels.astype(int)
                 )
-
-        # fix the issue with msrp after imputing, incluing Nan value or value < 0
-        # Fill NaN values with 300
-        X_transformed["msrp"] = X_transformed["msrp"].fillna(msrp_min)
-
-        # Replace values less than 300 with 300
-        X_transformed.loc[X_transformed["msrp"] < msrp_min, "msrp"] = msrp_min
 
         return X_transformed
 

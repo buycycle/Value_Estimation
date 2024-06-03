@@ -31,6 +31,7 @@ create_data_model(
         # "C": 1.0,
         # "epsilon": 0.1,
         # "random_state": 42, #XGBRegressor
+        "criterion": "absolute_error",
         "random_state": 42,
         "n_jobs": -1,  # Use all cores for training
     },

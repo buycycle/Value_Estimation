@@ -1,5 +1,6 @@
 """
 save the response from the fastapi model for checking the prediction/interval
+test data source is from the bikes_template table
 """
 
 import sys
@@ -57,7 +58,7 @@ df = get_data(query, query_dtype, index_col="template_id")
 df = df.reset_index()
 
 # get 10% of the data for testing
-df = df.sample(frac=0.1, random_state=1)
+df = df.sample(frac=0.1, random_state=40)
 
 # add condition_code and create date
 df["condition_code"] = "3"
@@ -106,12 +107,16 @@ def evaluation_model(path):
     df["prediction"] = price
     new_df = pd.DataFrame(interval, columns=["min", "max"])
     df = df.reset_index(drop=True).join(new_df.reset_index(drop=True))
-    df.sort_values("msrp", ascending=False, inplace=True)
+    df["ratio"] = round(df["prediction"] / df["msrp"], 2)
+
+    df.sort_values("ratio", ascending=False, inplace=True)
+    df.to_csv(f"{path}/preditions_ratio.csv", index=False)
 
     # save the file
-    df.to_csv(path, index=False)
+    df.sort_values("msrp", ascending=False, inplace=True)
+    df.to_csv(f"{path}/preditions_msrp.csv", index=False)
 
 
 # entry point for running the evaluation
 if __name__ == "__main__":
-    evaluation_model("data/prediction.csv")
+    evaluation_model("data")

@@ -49,7 +49,7 @@ cumulative_inflation_df = cal_inflation_cum_factor(current_year, inflation_rate)
 # The order of the pydantic BAseModel should follow the order [ categorical+features + numerical_features ]
 # 8 categorical features
 categorical_features = [
-    "template_id",  #6595, not used currently
+    "template_id",  # 6595, not used currently
     "brake_type_code",
     "frame_material_code",
     "shifting_code",
@@ -241,3 +241,18 @@ main_query_dtype = {
     "is_ebike": pd.Int64Dtype(),
     "is_frameset": pd.Int64Dtype(),
 }
+
+# print(cal_inflation_cum_factor(2024, inflation_rate))
+# 0   2024          1.000000
+# 1   2023          1.064000
+# 2   2022          1.161888
+# 3   2021          1.195583
+# 4   2020          1.203952
+# 5   2019          1.220807
+# 6   2018          1.242782
+# 7   2017          1.262666
+# 8   2016          1.265192
+# 9   2015          1.266457
+# 10  2014          1.271523
+# 11  2013          1.288052
+# 12  2012          1.321542

@@ -4,14 +4,15 @@ Model that predicts the sales price of a bicycle given a set of bicycle features
 The model also returns a prediction interval.
 
 ## Model
-Currently, the best model performance is shown by tree based regression  models.
-A ExtraTreesRegressor showed sub 10% MAPE when tested on current months sales.
+Currently, the best model performance is achieved by the RandomForestQuantileRegressor from the quantile_forest library. 
+The model shows a Mean Absolute Percentage Error (MAPE) of 16% to 18% on the testing data. 
+For high and low-priced bikes, a function based on msrp, bike year, and mileage code will be implemented, as there is currently a lack of data in these price ranges, leading to suboptimal model performance.
 
 ## Imputation
 The model needs to be able to cope with different data quality for different use cases. We employ an MissForest Imputer that is able to deal with numeric and categorical missing features.
 
 ## Prediction interval
-The mode returns the prediction interval for a given confidence score.
+The model returns a prediction interval with a range of 5% of the predicted price.
 In this context, a prediction interval is a range of values that is likely to contain the true value of a target variable for a given test instance, with a specified level of confidence.
 see: Nicolai Meinshausen. Quantile Regression Forests. Journal of Machine Learning Research, 7(6), 983-999, 2006. URL: https://www.jmlr.org/papers/volume7/meinshausen06a/meinshausen06a.pdf.
 
@@ -92,7 +93,7 @@ Run app.
 
 ## Driver and Config
 
-src/driver.py defines the SQL queries, categorical and numerical features as well as the prefilter_features.
+src/driver.py defines the SQL queries, inflation_rate, categorical and numerical features as well as the prefilter_features.
 config/config.ini holdes DB credentials.
 
 ## Endpoint
@@ -123,9 +124,7 @@ Parameters:
         "bike_category_id": "Int64",
         "mileage_code": "object",
         "motor": "Int64",
-        "city": "object",
         "condition_code": "object",
-        "frame_size": "object",
         "rider_height_min": "Float64",
         "rider_height_max": "Float64",
         "brake_type_code": "object",
@@ -136,10 +135,7 @@ Parameters:
         "family_model_id": "Int64",
         "family_id": "Int64",
         "brand_id": "Int64",
-        "quality_score": "Int64",
         "is_mobile": "Int64",
-        "currency_id": "Int64",
-        "seller_id": "Int64",
         "is_ebike": "Int64",
         "is_frameset": "Int64"
     },
