@@ -8,7 +8,7 @@ config/config.ini
 
 
 # data
-src/estat_tec00118.tsvestat_tec00118.tsv
+src/estat_tec00118.tsv
 data
 plot
 
