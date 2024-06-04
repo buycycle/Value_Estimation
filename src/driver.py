@@ -1,39 +1,83 @@
 import pandas as pd
 
 target = "sales_price"
+msrp_min = 250
+msrp_max = 25000
+target_min = 200
+target_max = 25000
 
-# 18 categorical features
+# data from eurostat https://ec.europa.eu/eurostat/web/hicp/database
+current_year = 2024
+inflation_rate = {
+    2012: 2.6,
+    2013: 1.3,
+    2014: 0.4,
+    2015: 0.1,
+    2016: 0.2,
+    2017: 1.6,
+    2018: 1.8,
+    2019: 1.4,
+    2020: 0.7,
+    2021: 2.9,
+    2022: 9.2,
+    2023: 6.4,
+}
+
+
+def cal_inflation_cum_factor(current_year, inflation_rate):
+    df = pd.DataFrame(list(inflation_rate.items()), columns=["year", "inflation_rate"])
+
+    # initialize the cumulative factor for the current year
+    cumulative_factors = {current_year: 1.0}
+    cumulative_factor = 1.0
+    # Calculate the cumulative inflation factor for each year
+    for y in range(current_year - 1, df["year"].min() - 1, -1):
+        inflation_rate = df.loc[df["year"] == y, "inflation_rate"].values[0]
+        cumulative_factor *= 1 + inflation_rate / 100
+        cumulative_factors[y] = cumulative_factor
+
+    # Convert the cumulative_factors dictionary to a DataFrame
+    cumulative_df = pd.DataFrame(
+        list(cumulative_factors.items()),
+        columns=["year", "inflation_factor"],
+    )
+    return cumulative_df
+
+
+cumulative_inflation_df = cal_inflation_cum_factor(current_year, inflation_rate)
+
+# The order of the pydantic BAseModel should follow the order [ categorical+features + numerical_features ]
+# 8 categorical features
 categorical_features = [
-    "template_id",
+    "template_id",  # 6595, not used currently
     "brake_type_code",
     "frame_material_code",
     "shifting_code",
-    "condition_code",
-    "sales_country_id",
-    "bike_type_id",
-    "bike_category_id",
-    "mileage_code",
-    "motor",
-    "bike_component_id",
-    "family_model_id",
-    "family_id",
-    "brand_id",
     "color",
-    "is_mobile",
-    "is_ebike",
-    "is_frameset",
+    "bike_category_id",  # [1, 2, 4, <NA>, 26, 28, 19, 29, 27]
+    "motor",  # [0, <NA>, 1]
+    "sales_country_id",  # 29
 ]
 
-# 8 numerical fetures
+# 17 numerical fetures
 numerical_features = [
     "msrp",
-    "bike_created_at_month",
+    "condition_code",
     "bike_created_at_year",
-    "bike_year",
+    "bike_created_at_month",
     "rider_height_min",
     "rider_height_max",
     "sales_duration",
-    "quality_score",
+    "bike_year",
+    "is_mobile",
+    "is_ebike",
+    "is_frameset",
+    "mileage_code",
+    "bike_type_id",  # only 1 and 2
+    "bike_component_id",  # 72 components
+    "family_model_id",  # 6382
+    "family_id",  # 1732
+    "brand_id",  # 334
 ]
 
 test_query = """
@@ -137,9 +181,7 @@ main_query = """
                 bikes.family_id as  family_id,
                 bikes.brand_id as brand_id,
 
-                -- quality score
-                quality_scores.score AS quality_score,
-
+            
                 -- is_mobile
                 bikes.is_mobile as is_mobile,
 
@@ -147,9 +189,9 @@ main_query = """
 
                 -- seller id
 
+                -- is_frameset
                 COALESCE(bike_template_additional_infos.is_ebike, 0) as is_ebike,
-                COALESCE(bike_template_additional_infos.is_frameset, 0) as is_frameset,
-
+                COALESCE(bike_template_additional_infos.is_frameset, 0) as is_frameset
 
 
 
@@ -158,9 +200,6 @@ main_query = """
 
                 join bookings on bikes.id = bookings.bike_id
                 join booking_accountings on bookings.id = booking_accountings.booking_id
-
-
-                join quality_scores on bikes.id = quality_scores.bike_id
 
 
                 left join bike_template_additional_infos on bikes.bike_template_id = bike_template_additional_infos.bike_template_id
@@ -198,8 +237,22 @@ main_query_dtype = {
     "family_model_id": pd.Int64Dtype(),
     "family_id": pd.Int64Dtype(),
     "brand_id": pd.Int64Dtype(),
-    "quality_score": pd.Int64Dtype(),
     "is_mobile": pd.Int64Dtype(),
     "is_ebike": pd.Int64Dtype(),
     "is_frameset": pd.Int64Dtype(),
 }
+
+# print(cal_inflation_cum_factor(2024, inflation_rate))
+# 0   2024          1.000000
+# 1   2023          1.064000
+# 2   2022          1.161888
+# 3   2021          1.195583
+# 4   2020          1.203952
+# 5   2019          1.220807
+# 6   2018          1.242782
+# 7   2017          1.262666
+# 8   2016          1.265192
+# 9   2015          1.266457
+# 10  2014          1.271523
+# 11  2013          1.288052
+# 12  2012          1.321542

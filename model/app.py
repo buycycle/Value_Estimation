@@ -14,6 +14,7 @@ from typing import Union, List
 from threading import Thread
 
 import pandas as pd
+import numpy as np
 import time
 
 # config file
@@ -26,6 +27,8 @@ from buycycle.logger import Logger
 from src.data import ModelStore, feature_engineering
 from src.strategies import GenericStrategy
 from src.helper import construct_input_df
+from src.driver import msrp_min, msrp_max
+from src.price import predict_with_msrp
 
 config_paths = "config/config.ini"
 config = configparser.ConfigParser()
@@ -64,34 +67,33 @@ model_loader.start()
 
 
 class PriceRequest(BaseModel):
-    """Class representing the price request"""
+    """Class representing the price request, the order need to be identical with the order in driver.py"""
 
     template_id: Union[int, None] = None
     brake_type_code: Union[object, None] = None
     frame_material_code: Union[object, None] = None
     shifting_code: Union[object, None] = None
-    condition_code: Union[object, None] = None
-    sales_country_id: Union[int, None] = None
-    bike_type_id: Union[int, None] = None
+    color: Union[object, None] = None
     bike_category_id: Union[int, None] = None
-    mileage_code: Union[object, None] = None
     motor: Union[int, None] = None
+    sales_country_id: Union[int, None] = None
+    msrp: Union[float, None] = None
+    condition_code: Union[object, None] = None
+    bike_created_at_year: Union[int, None] = None
+    bike_created_at_month: Union[int, None] = None
+    rider_height_min: Union[float, None] = None
+    rider_height_max: Union[float, None] = None
+    sales_duration: Union[int, None] = None
+    bike_year: Union[int, None] = None
+    is_mobile: Union[int, None] = None
+    is_ebike: Union[int, None] = None
+    is_frameset: Union[int, None] = None
+    mileage_code: Union[object, None] = None
+    bike_type_id: Union[int, None] = None
     bike_component_id: Union[int, None] = None
     family_model_id: Union[int, None] = None
     family_id: Union[int, None] = None
     brand_id: Union[int, None] = None
-    color: Union[object, None] = None
-    is_mobile: Union[int, None] = None
-    is_ebike: Union[int, None] = None
-    is_frameset: Union[int, None] = None
-    msrp: Union[float, None] = None
-    bike_created_at_month: Union[int, None] = None
-    bike_created_at_year: Union[int, None] = None
-    bike_year: Union[int, None] = None
-    rider_height_min: Union[float, None] = None
-    rider_height_max: Union[float, None] = None
-    sales_duration: Union[int, None] = None
-    quality_score: Union[int, None] = None
 
 
 @app.get("/")
@@ -109,7 +111,8 @@ async def price_interval(
     request_data: Union[PriceRequest, List[PriceRequest]],
     strategy: str = Header(default="Generic"),
 ):
-    """take in bike data
+    """
+    take in bike data
     the payload should be in PriceRequest format
     """
     # Convert the PriceRequest to a dataframe
@@ -127,19 +130,32 @@ async def price_interval(
             content="no valid request values", status_code=status.HTTP_400_BAD_REQUEST
         )
 
-    # get target strategy, currently not implemented since we only have generic strategy
-    strategy_target = strategy  # Provide a default value if not found
+    # get target strategy, with default value "generic"
+    strategy_target = strategy
 
-    # fill the missing data with np.nan
+    # fill the missing data with np.nan and do feature engineering
     features = list(PriceRequest.model_fields.keys())
     X_constructed = construct_input_df(price_payload, features)
+
+    # Feature engineering
     X_feature_engineered = feature_engineering(X_constructed)
 
+    # Predict the price and interval
     with model_store._lock:
+        # Split the data into parts according to msrp
+        # based on the original msrp before inflation adjustment(feature engineering)
+        mask_msrp = (X_constructed["msrp"] <= (msrp_min)) | (
+            X_constructed["msrp"] >= msrp_max
+        )
+        mask_model = (
+            (X_constructed["msrp"] > (msrp_min)) & (X_constructed["msrp"] < msrp_max)
+        ) | pd.isna(X_constructed["msrp"])
+        conditions = [mask_msrp, mask_model]
+
+        # Define choice function for the ML model predition cases
         generic_strategy = GenericStrategy(
             model_store.regressor, model_store.data_transform_pipeline, logger
         )
-
         quantiles = [0.2, 0.5, 0.8]
 
         X_transformed = model_store.data_transform_pipeline.transform(
@@ -149,20 +165,28 @@ async def price_interval(
         strategy, price, interval, error = generic_strategy.predict_price(
             X=X_transformed, quantiles=quantiles
         )
+        combined = list(zip(price, interval))
+        predictions = pd.Series(combined)
 
-        price = price.tolist()
-        interval = interval.tolist()
-        # scale interval to 5% of price
-        new_interval = []
-        for i, p in zip(interval, price):
-            current_interval_size = i[1] - i[0]
-            desired_interval_size = p * 0.05
-            scaling_factor = desired_interval_size / current_interval_size
-            # Calculate the new interval bounds
-            new_lower_bound = round(i[0] * scaling_factor + p * (1 - scaling_factor))
-            new_upper_bound = round(i[1] * scaling_factor + p * (1 - scaling_factor))
-            new_interval.append([new_lower_bound, new_upper_bound])
-        interval = new_interval
+        # Define choices, which need to return the same structure
+        choices = [
+            X_feature_engineered.apply(predict_with_msrp, args=(0.5,), axis=1),
+            predictions,
+        ]
+
+        # Define default value
+        default = pd.Series([(np.nan, [np.nan, np.nan])] * len(X_feature_engineered))
+
+        # apply the conditions and get the price and interval
+        X_feature_engineered["price"], X_feature_engineered["interval"] = zip(
+            *np.select(conditions, choices, default=default)
+        )
+
+        # sort by original request ids
+        X_feature_engineered = X_feature_engineered.reindex(X_constructed.index)
+        # Extract the price and interval columns
+        price = X_feature_engineered["price"].tolist()
+        interval = X_feature_engineered["interval"].tolist()
 
         logger.info(
             strategy,
@@ -173,6 +197,7 @@ async def price_interval(
                 "X_input": request_dic,
             },
         )
+
         if error:
             # Return error response if it exists
             logger.error(
@@ -184,6 +209,7 @@ async def price_interval(
             )
 
         else:
+
             # Return success response with recommendation data and 200 OK
             return {
                 "status": "success",
