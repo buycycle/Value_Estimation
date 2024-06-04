@@ -17,14 +17,26 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import cross_val_score, GridSearchCV, train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from sklearn.preprocessing import MinMaxScaler, LabelEncoder, RobustScaler
 import category_encoders as ce
 from joblib import dump, load
 from buycycle.data import sql_db_read, DataStoreBase
 from src.price import train
 from quantile_forest import RandomForestQuantileRegressor, ExtraTreesQuantileRegressor
+from src.driver import (
+    cumulative_inflation_df,
+    target,
+    msrp_min,
+    msrp_max,
+    target_min,
+    target_max,
+    categorical_features,
+    numerical_features,
+)
+
 
 import threading  # for data read lock
+import datetime
 
 
 def get_data(
@@ -57,7 +69,7 @@ def clean_data(
     df: pd.DataFrame,
     numerical_features: List[str],
     categorical_features: List[str],
-    target: str = "sales_price",
+    target: str = target,
 ) -> pd.DataFrame:
     """
     Cleans data by removing outliers and unnecessary data.
@@ -72,36 +84,104 @@ def clean_data(
     """
     # only keep categorical and numerical features
     df = df[categorical_features + numerical_features + [target]]
-    # remove custom template idf and where target = NA
-    df = df[df["template_id"] != 79204].dropna(subset=[target])
-    df = df[df[target] > 400]
-    df = df[df[target] < 15000]
-    # exclude data with the really low price(pontential fake bike)
+
+    # exclude data with the low/high price and msrp
+    df = df[(df[target] > target_min) & (df[target] < target_max)]
+    df = df[
+        (df["msrp"].notnull()) & (df["msrp"] >= msrp_min) & (df["msrp"] <= msrp_max)
+    ]
+    # exclude data withreally low price(pontential fake bike)
     df = df[df[target] > df["msrp"] * 0.3]
 
     # remove duplicates
     df = df.loc[~df.index.duplicated(keep="last")]
+
+    # adjust sales_price in bike_created_at_year to current value
+    df = pd.merge(
+        df,
+        cumulative_inflation_df,
+        left_on="bike_created_at_year",
+        right_on="year",
+        how="left",
+    )
+    df[target] = df[target] * df["inflation_factor"]
+    df.drop(["year", "inflation_factor"], axis=1, inplace=True)
+
     return df
 
 
 def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Feature engineering for both training, testing data, also the request
+    Args:
+        df: DataFrame to feature engineering.
+    Returns:
+        DataFrame: Transformed data.
+    """
+    # set year and month to current time if not given
+    current_year = datetime.datetime.now().year
+    current_month = datetime.datetime.now().month
+
+    df["bike_created_at_year"].fillna(current_year, inplace=True)
+    df["bike_created_at_month"].fillna(current_month, inplace=True)
+
     # replace bike_created_at_month with a sinusoidal transformation
     df["bike_created_at_month_sin"] = np.sin(
         2 * np.pi * df["bike_created_at_month"] / 12
     )
-
     df["bike_created_at_month_cos"] = np.cos(
         2 * np.pi * df["bike_created_at_month"] / 12
     )
+    # set missing/problematic bike_year to 2018 before doing inflation calculate
+    df["bike_year"] = df["bike_year"].apply(
+        lambda x: 2018 if pd.isnull(x) or x < 1900 or x > current_year else x
+    )
+
+    # Todo, add inflation to the msrp, currently this leads to the issue with price over smrp
+    # adjust msrp to bike_year according to the EU inflation rate, backtracking only to 2020
+    df["merge_year"] = df["bike_year"].apply(lambda x: 2020 if x < 2020 else x)
+    df = pd.merge(
+        df, cumulative_inflation_df, left_on="merge_year", right_on="year", how="left"
+    )
+    df["msrp"] = df["msrp"] * df["inflation_factor"]
+    df.drop(["merge_year", "year", "inflation_factor"], axis=1, inplace=True)
 
     # create bike age from bike_year
-    df["bike_age"] = pd.to_datetime("today").year - df["bike_year"]
-    df.drop(["bike_created_at_month", "bike_year"], axis=1, inplace=True)
+    df["bike_age"] = df["bike_created_at_year"] - df["bike_year"]
+
+    # drop unused columns
+    df.drop(["bike_created_at_month", "bike_year", "template_id"], axis=1, inplace=True)
+
+    # replace mileage_code with number, treated as numerical feature
+    df["mileage_code"] = (
+        df["mileage_code"]
+        .replace(
+            {
+                "more_than_10000": 5,
+                "3000_10000": 4,
+                "500_3000": 3,
+                "less_than_500": 2,
+                "0km": 1,
+            }
+        )
+        .fillna(-1)
+    )
+    # convert condition_code from string to integer, treated as numerical feature
+    df["condition_code"] = pd.to_numeric(df["condition_code"], errors="coerce")
+
+    # replace None in categorical/string columns, it will be imputed as missing data, otherwise rhe Non and missing data will be treated as different
+    df["frame_material_code"].replace("None", np.nan, inplace=True)
+    df["brake_type_code"].replace("None", np.nan, inplace=True)
+    df["shifting_code"].replace("None", np.nan, inplace=True)
+    df["color"].replace("None", np.nan, inplace=True)
+    df["motor"].replace("None", np.nan, inplace=True)
 
     return df
 
 
-def train_test_split_date(df: pd.DataFrame, target: str, test_size: float):
+def train_test_split_date(
+    df: pd.DataFrame, target: str = target, test_size: float = 0.12
+):
     """
     Splits data into training and test sets based on a date cutoff.
     Args:
@@ -114,7 +194,7 @@ def train_test_split_date(df: pd.DataFrame, target: str, test_size: float):
     X = df.drop([target], axis=1)
     y = df[target]
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.01, random_state=20
+        X, y, test_size=test_size, random_state=20
     )
 
     return X_train, y_train, X_test, y_test
@@ -125,8 +205,8 @@ def create_data(
     query_dtype: str,
     numerical_features: List[str],
     categorical_features: List[str],
-    target: str,
-    test_size: float,
+    target: str = target,
+    test_size: float = 0.12,
 ):
     """
     Fetches, cleans, splits, and saves data.
@@ -138,7 +218,7 @@ def create_data(
         months: Number of months before current date to use as cutoff.
         path: Path to save data. Default is 'data/'.
     """
-    df = get_data(query, query_dtype, index_col="id")
+    df = get_data(query, query_dtype)
     df = clean_data(df, numerical_features, categorical_features, target=target).sample(
         frac=1
     )
@@ -321,6 +401,7 @@ class MissForestImputer(BaseEstimator, TransformerMixin):
                 X_transformed[col] = self.label_encoders[col].inverse_transform(
                     imputed_labels.astype(int)
                 )
+
         return X_transformed
 
 
@@ -368,12 +449,18 @@ class Scaler(BaseEstimator, TransformerMixin):
     Class for scaling features using MinMaxScaler
     """
 
-    def __init__(self, numerical_features: Optional[List[str]] = None):
+    def __init__(
+        self,
+        numerical_features: Optional[List[str]] = None,
+        scaler_params: Optional[Dict] = None,
+    ):
         """
         Initialize Scaler.
         Parameters: numerical_features : list of str (optional, default scales all)
         """
-        self.scaler_ = MinMaxScaler()
+        self.scaler_ = (
+            MinMaxScaler(**scaler_params) if scaler_params else MinMaxScaler()
+        )
         self.numerical_features = numerical_features
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> "Scaler":
@@ -426,8 +513,15 @@ def create_data_transform_pipeline(
     # One-hot encoding for categorical features
     categorical_encoder = DummyCreator(categorical_features)
 
-    # Scaler for numerical features
-    numerical_scaler = Scaler(numerical_features)
+    # Scaler for numerical features except msrp
+    numerical_features_reduced = numerical_features.copy()
+    numerical_features_reduced.remove("msrp")
+    numerical_scaler = Scaler(numerical_features_reduced)
+
+    # Custom scaler for msrp
+    msrp_scaler = Scaler(
+        ["msrp"], scaler_params={"feature_range": (msrp_min, msrp_max)}
+    )
 
     # Create the pipeline with the custom imputer, one-hot encoder, and scaler
     data_transform_pipeline = Pipeline(
@@ -435,6 +529,7 @@ def create_data_transform_pipeline(
             ("impute", miss_forest_imputer),
             ("dummies", categorical_encoder),
             ("scale", numerical_scaler),
+            ("msrp_scaler", msrp_scaler),
         ]
     )
     return data_transform_pipeline
@@ -461,44 +556,20 @@ def fit_transform(
     Tuple[DataFrame, DataFrame, Pipeline]
         Transformed training data, transformed testing data, and fitted pipeline.
     """
-    categorical_features = X_train.select_dtypes(include=["object"]).columns.tolist()
-    numerical_features = X_train.select_dtypes(exclude=["object"]).columns.tolist()
-    # 18 categorical features
-    # categorical_features = [
-    #     "template_id",
-    #     "brake_type_code",
-    #     "frame_material_code",
-    #     "shifting_code",
-    #     "condition_code",
-    #     "sales_country_id",
-    #     "bike_type_id",
-    #     "bike_category_id",
-    #     "mileage_code",
-    #     "motor",
-    #     "bike_component_id",
-    #     "family_model_id",
-    #     "family_id",
-    #     "brand_id",
-    #     "color",
-    #     "is_mobile",
-    #     "is_ebike",
-    #     "is_frameset",
-    # ]
-
-    # # 8 numerical fetures
-    # numerical_features = [
-    #     "msrp",
-    #     "bike_created_at_year",
-    #     "rider_height_min",
-    #     "rider_height_max",
-    #     "sales_duration",
-    #     "quality_score",
-    #     "bike_created_at_month_sin",
-    #     "bike_age",
-    # ]
+    # adjust the categorical and numerical lists according to the feature engineering
+    categorical_features_copy = categorical_features.copy()
+    numerical_features_copy = numerical_features.copy()
+    categorical_features_copy.remove("template_id")
+    numerical_features_copy.remove("bike_created_at_month")
+    numerical_features_copy.remove("bike_year")
+    numerical_features_copy.extend(
+        ["bike_created_at_month_sin", "bike_created_at_month_cos", "bike_age"]
+    )
+    print("categorical_features: {}".format(categorical_features_copy))
+    print("numerical_features: {}".format(numerical_features_copy))
 
     data_transform_pipeline = create_data_transform_pipeline(
-        categorical_features, numerical_features
+        categorical_features_copy, numerical_features_copy
     )
     X_train = data_transform_pipeline.fit_transform(X_train)
     X_test = data_transform_pipeline.transform(X_test)
@@ -605,8 +676,6 @@ def create_data_model(
     X_test.to_pickle(os.path.join(path, "X_test.pkl"))
     y_test.to_pickle(os.path.join(path, "y_test.pkl"))
     write_model_pipeline(regressor, data_transform_pipeline, path)
-
-    # return categorical_features, numerical_features
 
 
 class ModelStore(DataStoreBase):

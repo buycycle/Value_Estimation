@@ -10,7 +10,7 @@ from tests.test_fixtures import app_mock, logger_mock
 def test_single_request_fastapi(app_mock, limit=150):
     """test the single price request for all strategies of the fastapi app"""
     client = TestClient(app_mock)
-    request = {"family_id": 12, "msrp": 1200, "is_ebike": 1}
+    request = {"msrp": 1200, "family_id": 12, "is_ebike": 1}
 
     start_time = time.time()
     response = client.post("/price_interval", json=request)
@@ -46,6 +46,8 @@ def test_multiple_request_fastapi(app_mock, limit=150):
     request = [
         {"template_id": 9973, "msrp": 3299, "frame_material_code": "carbon"},
         {"family_id": 821, "msrp": 3500, "motor": 1},
+        {"family_id": 821, "msrp": 25000, "motor": 1},
+        {"family_id": 821, "motor": 1},
     ]
 
     start_time = time.time()
@@ -70,10 +72,8 @@ def test_multiple_request_fastapi(app_mock, limit=150):
     )
     # assert that the response has the expected length
     assert (
-        len(price) == 2,
-        f"expected 2 price for strategy {strategy_used}, got the price {price}",
-    )
+        len(price) == 4
+    ), f"expected 2 price for strategy {strategy_used}, got the price {price}"
     assert (
-        len(interval) == 2,
-        f"expected 2 interval for strategy {strategy_used}, got the interval {interval}",
-    )
+        len(interval) == 4
+    ), f"expected 2 interval for strategy {strategy_used}, got the interval {interval}"
