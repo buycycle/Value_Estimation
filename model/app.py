@@ -136,20 +136,23 @@ async def price_interval(
     # fill the missing data with np.nan and do feature engineering
     features = list(PriceRequest.model_fields.keys())
     X_constructed = construct_input_df(price_payload, features)
+
+    # Feature engineering
     X_feature_engineered = feature_engineering(X_constructed)
 
     # Predict the price and interval
     with model_store._lock:
-        # Split the dataframe into 3 parts based on msrp
-        mask_low = X_feature_engineered["msrp"] <= (msrp_min + 250)
-        mask_mid = (
-            (X_feature_engineered["msrp"] > (msrp_min + 250))
-            & (X_feature_engineered["msrp"] < msrp_max)
-        ) | pd.isna(X_feature_engineered["msrp"])
-        mask_high = X_feature_engineered["msrp"] >= msrp_max
-        conditions = [mask_low, mask_mid, mask_high]
+        # Split the data into parts according to msrp
+        # based on the original msrp before inflation adjustment(feature engineering)
+        mask_msrp = (X_constructed["msrp"] <= (msrp_min)) | (
+            X_constructed["msrp"] >= msrp_max
+        )
+        mask_model = (
+            (X_constructed["msrp"] > (msrp_min)) & (X_constructed["msrp"] < msrp_max)
+        ) | pd.isna(X_constructed["msrp"])
+        conditions = [mask_msrp, mask_model]
 
-        # Define choice function for the ML predition condition
+        # Define choice function for the ML model predition cases
         generic_strategy = GenericStrategy(
             model_store.regressor, model_store.data_transform_pipeline, logger
         )
@@ -167,9 +170,8 @@ async def price_interval(
 
         # Define choices, which need to return the same structure
         choices = [
-            X_feature_engineered.apply(predict_with_msrp, args=(0.6,), axis=1),
+            X_feature_engineered.apply(predict_with_msrp, args=(0.5,), axis=1),
             predictions,
-            X_feature_engineered.apply(predict_with_msrp, args=(0.55,), axis=1),
         ]
 
         # Define default value
