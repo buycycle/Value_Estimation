@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import os
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import (
@@ -21,6 +22,7 @@ import category_encoders as ce
 from joblib import dump, load
 from buycycle.data import sql_db_read, DataStoreBase
 from quantile_forest import RandomForestQuantileRegressor, ExtraTreesQuantileRegressor
+from buycycle.logger import Logger
 
 
 def train(
@@ -60,7 +62,6 @@ def train(
         preds = regressor.predict(X_train)
 
     score = scoring(y_train, preds)
-
     print("{} Train error: {}".format(model, score))
 
     return regressor
@@ -70,10 +71,9 @@ def test(
     X_transformed: pd.DataFrame,
     y: pd.Series,
     regressor: Callable,
-    data_transform_pipeline: Callable,
     scoring: Callable = mean_absolute_percentage_error,
-    quantiles: List[float] = [0.025, 0.5, 0.975],
-) -> Tuple[np.ndarray, np.ndarray, str]:
+    quantiles: List[float] = [0.2, 0.5, 0.8],
+) -> Tuple[str, np.ndarray, np.ndarray, str]:
     """
     Tests the model.
     Args:
@@ -88,18 +88,27 @@ def test(
         interval: Prediction intervals.
         error
     """
+    environment = os.getenv("ENVIRONMENT")
+    ab = os.getenv("AB")
+    app_name = "price"
+    app_version = "canary-001"
+    logger = Logger.configure_logger(environment, ab, app_name, app_version)
     # Check if the model is a quantile regressor
     if isinstance(
         regressor, (RandomForestQuantileRegressor, ExtraTreesQuantileRegressor)
     ):
-        strategy, preds, interval, error = predict_interval(
-            X_transformed, regressor, quantiles
+        strategy, preds, interval, error = predict_price_interval(
+            X_transformed, regressor, quantiles, logger
         )
 
     else:
-        preds = predict_point_estimate(X_transformed, regressor)
-        interval = None
-    pd.DataFrame(preds).to_pickle("data/preds.pkl")
+        strategy, preds, interval, error = predict_price(
+            X_transformed, regressor, logger
+        )
+
+    path = "data/"
+    pd.DataFrame(interval, columns=["low", "high"]).to_pickle(path + "/interval.pkl")
+    pd.Series(preds, name="prediction").to_pickle(path + "/preds.pkl")
 
     score = scoring(y, preds)
     print("Error: {}".format(score))
@@ -123,7 +132,7 @@ def predict_point_estimate(
     return preds
 
 
-def predict_interval(
+def predict_price_interval(
     X_transformed: pd.DataFrame,
     regressor: Callable,
     quantiles: List[float],
@@ -131,6 +140,7 @@ def predict_interval(
 ) -> Tuple[str, np.ndarray, np.ndarray, str]:
     """
     Transform X and predicts target variable as well as prediction interval.
+    Only for the models, which return both price and interval.
     Args:
         X_transformed: Transformed Features.
         regressor: Trained model.
@@ -142,21 +152,107 @@ def predict_interval(
     """
     strategy = "Generic"
     error = None
-    preds = np.array([])
-    interval = np.array([])
+    preds = []
+    interval = []
     try:
         # Make predictions using the regressor and the specified quantiles
         predict = regressor.predict(X_transformed, quantiles)
-
         # Extract the median prediction and the prediction intervals
         preds = predict[:, 1]
         interval = predict[:, [0, 2]]
+
+        preds = [round(x, 2) for x in preds]
+        # # scale interval to 5% of price
+        new_interval = []
+        for i, p in zip(interval, preds):
+            current_interval_size = i[1] - i[0]
+            desired_interval_size = p * 0.05
+            scaling_factor = desired_interval_size / current_interval_size
+            # Calculate the new interval bounds
+            new_lower_bound = round(i[0] * scaling_factor + p * (1 - scaling_factor))
+            new_upper_bound = round(i[1] * scaling_factor + p * (1 - scaling_factor))
+            new_interval.append([new_lower_bound, new_upper_bound])
+        interval = new_interval
+
     except Exception as e:
         # If an error occurs, capture the error message
         error = str(e)
 
     # Return the predictions, intervals, and any error message
     return strategy, preds, interval, error
+
+
+# To do: add high/low price adjuster
+def predict_price(
+    X_transformed: pd.DataFrame,
+    regressor: Callable,
+    logger: Callable,
+    intervalrange: float = 0.05,
+) -> Tuple[str, np.ndarray, np.ndarray, str]:
+    """
+    Transform X and predicts target variable and set intervalrange of price as interval.
+    For the models, which return a single price.
+    Args:
+        X_transformed: Transformed Features.
+        regressor: Trained model.
+        intervalrange: For calculating intervals.
+    Returns:
+        preds: Predictions.
+        interval: Prediction intervals.
+        error: error message, if any
+    """
+    strategy = "Generic"
+    error = None
+    preds = []
+    interval = []
+    try:
+        # Make predictions using the regressor and the specified quantiles
+        preds = regressor.predict(X_transformed)
+        preds = [round(x, 2) for x in preds]
+        # scale interval to 5% of price
+        interval = [
+            [round(p - intervalrange / 2 * p, 2), round(p + intervalrange / 2 * p, 2)]
+            for p in preds
+        ]
+
+    except Exception as e:
+        # If an error occurs, capture the error message
+        error = str(e)
+
+    # Return the predictions, intervals, and any error message
+    return strategy, preds, interval, error
+
+
+def predict_with_msrp(row, ratio) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Calculate the price based on the msrp
+    Args:
+        row: Transformed Features.
+        ratio: the hightest ratio.
+    Returns:
+        preds: Predictions.
+        interval: Prediction intervals.
+    """
+    msrp = row["msrp"]
+    # To do, implement also the bike_age and mileage_code
+    # bike_age = row["bike_age"]
+    # mileage_code = row["mileage_code"]
+
+    # age_decay_rate = 0.05
+    # mileage_decay_rate = 0.1
+
+    # ratio = (
+    #     ratio
+    #     * np.exp(-age_decay_rate * bike_age)
+    #     * (
+    #         1
+    #         if abs(mileage_code) == 1
+    #         else np.exp(-mileage_decay_rate * abs(mileage_code - 1))
+    #     )
+    # )
+    price = round(msrp * ratio, 2)
+    interval = [round(price - price * 0.25, 2), round(price + price * 0.25, 2)]
+    return price, interval
 
 
 def check_in_interval(

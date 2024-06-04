@@ -5,7 +5,8 @@ from typing import Tuple, List
 
 from abc import ABC, abstractmethod
 
-from src.price import predict_interval
+from src.price import predict_price_interval, predict_price
+from quantile_forest import RandomForestQuantileRegressor, ExtraTreesQuantileRegressor
 
 
 class PricePredictionStrategy(ABC):
@@ -23,9 +24,18 @@ class GenericStrategy(PricePredictionStrategy):
     def predict_price(
         self, X: pd.DataFrame, quantiles: List[float] = [0.025, 0.5, 0.975]
     ) -> Tuple[str, np.ndarray, np.ndarray, str]:
-        return predict_interval(
-            X,
-            self.model,
-            quantiles,
-            self.logger,
-        )
+        if isinstance(
+            self.model, (RandomForestQuantileRegressor, ExtraTreesQuantileRegressor)
+        ):
+            return predict_price_interval(
+                X,
+                self.model,
+                quantiles,
+                self.logger,
+            )
+        else:
+            return predict_price(
+                X,
+                self.model,
+                self.logger,
+            )
