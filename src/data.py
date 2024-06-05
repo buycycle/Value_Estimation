@@ -458,6 +458,7 @@ class Scaler(BaseEstimator, TransformerMixin):
         Initialize Scaler.
         Parameters: numerical_features : list of str (optional, default scales all)
         """
+        self.scaler_params = scaler_params
         self.scaler_ = (
             MinMaxScaler(**scaler_params) if scaler_params else MinMaxScaler()
         )
