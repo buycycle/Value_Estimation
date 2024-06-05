@@ -15,4 +15,6 @@ plot
 # notebook
 *.ipynb
 
+**/.DS_Store
+
 
