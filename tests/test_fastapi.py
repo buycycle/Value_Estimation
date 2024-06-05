@@ -67,9 +67,8 @@ def test_multiple_request_fastapi(app_mock, limit=150):
 
     # check the time taken for the recommendation
     assert (
-        end_time - start_time < limit,
-        f"{strategy_used} took {(end_time - start_time)*1000} ms, limit is {limit*1000} ms",
-    )
+        end_time - start_time < limit
+    ), f"{strategy_used} took {(end_time - start_time)*1000} ms, limit is {limit*1000} ms"
     # assert that the response has the expected length
     assert (
         len(price) == 4
