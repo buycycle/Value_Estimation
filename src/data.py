@@ -453,7 +453,6 @@ class MissForestImputer(BaseEstimator, TransformerMixin):
                 X_transformed[col] = self.label_encoders[col].inverse_transform(
                     imputed_labels.astype(int)
                 )
-
         return X_transformed
 
 

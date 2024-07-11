@@ -24,7 +24,6 @@ backup
 notebook.ipynb
 notebook
 *.ipynb
-
 **/.DS_Store
 
 
