@@ -1,6 +1,6 @@
 """
 save the response from the fastapi model for checking the prediction/interval
-test data source is from the bikes_template table
+testing data is from the bikes_template table
 """
 
 import sys
@@ -8,11 +8,18 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+import json
 import pandas as pd
+import numpy as np
 from fastapi.testclient import TestClient
 from unittest.mock import Mock, patch
+
 from buycycle.logger import Logger
 from src.data import get_data
+from evaluate import MockApp
+
+# Set the environment variable to indicate a test environment to skip the model selecting
+os.environ["ENVIRONMENT"] = "test"
 
 # define the test data
 query = """
@@ -53,7 +60,8 @@ query_dtype = {
     "is_frameset": pd.Int64Dtype(),
 }
 
-# get the test data
+
+# prepare the testing data
 df = get_data(query, query_dtype, index_col="template_id")
 df = df.reset_index()
 
@@ -63,60 +71,7 @@ df = df.sample(frac=0.1, random_state=40)
 # add condition_code and create date
 df["condition_code"] = "3"
 
-# transfer dataframe to dictionary
-data_dict = df.to_dict(orient="records")
-
-
-def create_logger_mock():
-    """mock the Logger"""
-    logger_mock = Mock(spec=Logger)
-
-    return logger_mock
-
-
-def create_app_mock(logger_mock):
-    """patch the model with the logger mock version and prevent threads from starting"""
-    with patch("buycycle.logger.Logger", return_value=logger_mock), patch(
-        "src.data.ModelStore.read_data_periodically"
-    ):
-        # The above patches will replace the actual methods with mocks that do nothing
-        from model.app import app  # Import inside the patch context to apply the mock
-
-        return app
-
-
-def evaluation_model(path):
-    """test time and len of return for all strategies of the fastapi app"""
-    logger_mock = create_logger_mock()
-    app_mock = create_app_mock(logger_mock)
-    print(app_mock)
-
-    client = TestClient(app_mock)
-    request = data_dict
-    response = client.post("/price_interval", json=request)
-
-    if response.status_code != 200:
-        raise Exception(f"Server returned error code {response.status_code}")
-    # parse the response data
-    data = response.json()
-    price = data.get("price")
-    interval = data.get("interval")
-
-    global df
-    # save the result and sort the result
-    df["prediction"] = price
-    new_df = pd.DataFrame(interval, columns=["min", "max"])
-    df = df.reset_index(drop=True).join(new_df.reset_index(drop=True))
-    df["ratio"] = round(df["prediction"] / df["msrp"], 2)
-
-    df.sort_values("ratio", ascending=False, inplace=True)
-    df.to_csv(f"{path}/preditions_ratio.csv", index=False)
-
-    # save the file
-    df.sort_values("msrp", ascending=False, inplace=True)
-    df.to_csv(f"{path}/preditions_msrp.csv", index=False)
-
-
 # entry point for running the evaluation
 if __name__ == "__main__":
-    evaluation_model("data")
+    app = MockApp()
+    app.save_response(df, "data")

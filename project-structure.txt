@@ -1,0 +1,49 @@
+vaule_estimation/
+├── config/
+│   └── config.ini
+│
+├── data/
+│   ├── model.joblib
+│   ├── pipeline.joblib
+│   ├── X_test.pkl
+│   ├── X_train.pkl
+│   ├── y_test.pkl
+│   ├── y_train.pkl
+│   ├── preds.pkl
+│   └── send_request.sh
+│
+├── evaluation/
+│   ├── calc_MAPE.py
+│   ├── eval_model.py
+│   └── eval_user_setup_deviation.py
+│
+├── model/
+│   └── app.py
+│
+├── plot/
+│
+├── src/
+│   ├── __init__.py
+│   ├── helper.py
+│   ├── plot.py
+│   ├── driver.py
+│   ├── data.py
+│   ├── price.py
+│   ├── strategies.db
+│   └── select_model.py
+│
+├── test/
+│   ├── __init__.py
+│   ├── test_fixtures.py
+│   ├── test_price.py
+│   ├── test_data.py
+│   └── test_fastapi.py
+│
+├── create_data.py
+├── .dockerignore
+├── .gitignore
+├── Jenkinsfile
+├── Makefile
+├── README.md
+└── requirement.txt
+

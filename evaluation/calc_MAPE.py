@@ -1,5 +1,5 @@
 """
-calculate the MAE for test_data
+calculate the MAE for currently saved model with test_data
 """
 
 import sys
@@ -11,6 +11,7 @@ from joblib import dump, load
 import subprocess
 import pickle
 from src.price import test
+from src.driver import msrp_min, msrp_max
 
 path = "data"
 
@@ -33,4 +34,13 @@ model = load(f"{path}/model.joblib", mmap_mode=None)
 
 
 if __name__ == "__main__":
-    test(X_test, y_test, model)
+    # Choose the data inside the msrp range
+    valid_indices = X_test[
+        (X_test["msrp"] <= msrp_max) & (X_test["msrp"] >= msrp_min)
+    ].index
+
+    # Use the valid indices to filter both X_test and y_test
+    X_test_filtered = X_test.loc[valid_indices]
+    y_test_filtered = y_test.loc[valid_indices]
+
+    test(X_test_filtered, y_test_filtered, model)

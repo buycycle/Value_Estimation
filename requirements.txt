@@ -31,6 +31,7 @@ git+https://gitlab.com/rauner/buycycle.git@main#egg=buycycle
 xgboost
 cmake
 lightfm
+apscheduler
 boto3==1.26.156
 
 # linting

@@ -11,8 +11,10 @@ config/config.ini
 src/estat_tec00118.tsv
 data
 plot
+analyzation
 
 # notebook
 *.ipynb
-
 **/.DS_Store
+
+project-strucutre.txt
