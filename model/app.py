@@ -188,6 +188,7 @@ async def price_interval(
         interval = X_feature_engineered["interval"].tolist()
         log_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logger.info(
             strategy,
             extra={
