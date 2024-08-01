@@ -16,6 +16,7 @@ from threading import Thread
 import pandas as pd
 import numpy as np
 import time
+from datetime import datetime
 
 # config file
 import configparser
@@ -188,9 +189,11 @@ async def price_interval(
         price = X_feature_engineered["price"].tolist()
         interval = X_feature_engineered["interval"].tolist()
 
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logger.info(
             strategy,
             extra={
+                "timestamp": timestamp,
                 "price": price,
                 "interval": interval,
                 "quantiles": quantiles,

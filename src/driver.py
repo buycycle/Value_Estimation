@@ -153,12 +153,8 @@ main_query = """
 
 
                 -- take if succeed_at is not null, else take updated_at difference to created_at
-                CASE
-                    WHEN bookings.succeed_at IS NOT NULL THEN DATEDIFF(bookings.succeed_at,bikes.created_at)
-                    ELSE DATEDIFF(bookings.updated_at,bikes.created_at)
-
-                END as sales_duration,
-
+         
+                DATEDIFF(bookings.created_at,bikes.created_at) as sales_duration,
 
 
                 -- spatial

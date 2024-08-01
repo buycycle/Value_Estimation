@@ -121,7 +121,7 @@ def predict_price_interval(
             current_interval_size = i[1] - i[0]
             if current_interval_size == 0:
                 print(p, i[0], i[1])
-            desired_interval_size = p * 0.05
+            desired_interval_size = p * 0.10
             scaling_factor = desired_interval_size / (current_interval_size + 1)
             # Calculate the new interval bounds
             new_lower_bound = round(i[0] * scaling_factor + p * (1 - scaling_factor))
@@ -200,7 +200,7 @@ def predict_with_msrp(row, ratio) -> Tuple[np.ndarray, np.ndarray]:
     ].iloc[0]
     msrp = row["msrp"] * inflation_factor
     price = round(msrp * ratio, 2)
-    interval = [round(price - price * 0.25, 2), round(price + price * 0.25, 2)]
+    interval = [round(price - price * 0.05, 2), round(price + price * 0.05, 2)]
     return price, interval
 
 

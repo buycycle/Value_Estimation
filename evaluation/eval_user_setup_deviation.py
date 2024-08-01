@@ -47,8 +47,11 @@ joins = [
 ]
 
 # Calculate the date 14 days ago from today
-days = 14
-days_ago = datetime.now() - timedelta(days=days)
+# days = 14
+# days_ago = datetime.now() - timedelta(days=days)
+days_ago = datetime(datetime.now().year, 6, 27)
+today = datetime.now()
+days = (today - days_ago).days
 
 # Format the date in a way that matches your database's date format, e.g., 'YYYY-MM-DD'
 formatted_date = days_ago.strftime("%Y-%m-%d")
