@@ -30,6 +30,7 @@ from src.driver import (
     target_max,
     categorical_features,
     numerical_features,
+    main_query_dtype,
 )
 
 def get_data(
