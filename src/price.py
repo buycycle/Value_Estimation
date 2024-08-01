@@ -119,8 +119,8 @@ def predict_price_interval(
         new_interval = []
         for i, p in zip(interval, preds):
             current_interval_size = i[1] - i[0]
-            if current_interval_size == 0:
-                print(p, i[0], i[1])
+            # if current_interval_size == 0:
+            #     print(p, i[0], i[1])
             desired_interval_size = p * 0.10
             scaling_factor = desired_interval_size / (current_interval_size + 1)
             # Calculate the new interval bounds

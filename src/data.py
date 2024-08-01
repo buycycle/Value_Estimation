@@ -34,6 +34,7 @@ from src.driver import (
     target_max,
     categorical_features,
     numerical_features,
+    main_query_dtype,
 )
 
 
@@ -83,15 +84,8 @@ def clean_data(
     # only keep categorical and numerical features
     # keep bike_created_at for filtering recent data for oversampling
     # bike_created_at will be drop after oversampling
-    used_columns = [
-        col
-        for col in categorical_features
-        + numerical_features
-        + [target]
-        + ["bike_created_at"]
-        if col not in ["bike_created_at_month_sin", "bike_created_at_month_cos"]
-    ]
-    df = df[used_columns]
+    # used_columns = [key for key in main_query_dtype.keys() if key not in ["id", target]]
+    # df = df[used_columns]
 
     # exclude data with the low/high price and msrp
     df = df[(df[target] > target_min) & (df[target] < target_max)]
@@ -276,7 +270,7 @@ def create_data(
         path: Path to save data. Default is 'data/'.
     """
     df = get_data(query, query_dtype)
-    df = clean_data(df, numerical_features, categorical_features, target=target)
+    df = clean_data(df, numerical_features, categorical_features, target=target).sample(frac=1)
     df = feature_engineering(df)
     X_train, y_train, X_test, y_test = train_test_split_date(
         df, target, test_size=test_size
