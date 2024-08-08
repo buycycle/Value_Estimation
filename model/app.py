@@ -61,7 +61,7 @@ while True:
         time.sleep(60)
 
 # then read the data periodically
-model_loader = Thread(target=model_store.read_data_periodically, args=(720, logger))
+model_loader = Thread(target=model_store.read_data_periodically, args=(1440, logger))
 
 model_loader.start()
 
