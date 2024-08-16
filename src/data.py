@@ -109,6 +109,7 @@ def clean_data(
     )
     df[target] = df[target] * df["inflation_factor"]
     df.drop(["year", "inflation_factor"], axis=1, inplace=True)
+
     return df
 
 
@@ -175,6 +176,7 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     # Replace 'None' with np.nan across all columns in the DataFrame
     # in categorical/string columns, np.nan will be imputed as missing data, otherwise the None and missing data will be treated as different
     df.replace("None", np.nan, inplace=True)
+
     return df
 
 

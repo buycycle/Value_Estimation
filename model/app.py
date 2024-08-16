@@ -17,7 +17,6 @@ import pandas as pd
 import numpy as np
 import time
 from datetime import datetime
-from datetime import datetime
 
 # config file
 import configparser
@@ -137,10 +136,10 @@ async def price_interval(
     # fill the missing data with np.nan and do feature engineering
     features = list(PriceRequest.model_fields.keys())
     X_constructed = construct_input_df(price_payload, features)
-
+    
     # Feature engineering
     X_feature_engineered = feature_engineering(X_constructed)
- 
+
     # Predict the price and interval
     with model_store._lock:
         # Split the data into parts according to msrp
@@ -189,7 +188,6 @@ async def price_interval(
         interval = X_feature_engineered["interval"].tolist()
         log_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logger.info(
             strategy,
             extra={
