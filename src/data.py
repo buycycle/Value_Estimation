@@ -176,7 +176,7 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     # Replace 'None' with np.nan across all columns in the DataFrame
     # in categorical/string columns, np.nan will be imputed as missing data, otherwise the None and missing data will be treated as different
     df.replace("None", np.nan, inplace=True)
-
+    print(f"after featured: {df.columns}")
     return df
 
 
