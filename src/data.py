@@ -1,7 +1,9 @@
 import os
 import numpy as np
 import pandas as pd
+import threading  # for data read lock
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from datetime import datetime, timedelta
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import (
     RandomForestRegressor,
@@ -10,12 +12,8 @@ from sklearn.ensemble import (
 )
 from sklearn.experimental import enable_iterative_imputer  # noqa: F401
 from sklearn.impute import IterativeImputer
-from sklearn.metrics import (
-    make_scorer,
-    mean_absolute_error,
-    mean_absolute_percentage_error,
-)
-from sklearn.model_selection import cross_val_score, GridSearchCV, train_test_split
+from sklearn.metrics import mean_absolute_percentage_error
+from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder, RobustScaler
 import category_encoders as ce
@@ -32,12 +30,8 @@ from src.driver import (
     target_max,
     categorical_features,
     numerical_features,
+    main_query_dtype,
 )
-
-
-import threading  # for data read lock
-import datetime
-
 
 def get_data(
     main_query: str,
@@ -82,8 +76,17 @@ def clean_data(
     Returns:
         DataFrame: Cleaned data.
     """
-    # only keep categorical and numerical features
-    df = df[categorical_features + numerical_features + [target]]
+    # keep the order of features, which is the same with the api
+    # contain bike_created_at for oversampling and will be drop afterwards
+    column_order = [
+        col
+        for col in categorical_features
+        + numerical_features
+        + [target]
+        + ["bike_created_at", "bike_year"]
+        if col not in ["template_ud", "bike_created_at_month_sin", "bike_created_at_month_cos", "bike_age"]
+    ]
+    df = df[column_order]
 
     # exclude data with the low/high price and msrp
     df = df[(df[target] > target_min) & (df[target] < target_max)]
@@ -106,7 +109,6 @@ def clean_data(
     )
     df[target] = df[target] * df["inflation_factor"]
     df.drop(["year", "inflation_factor"], axis=1, inplace=True)
-
     return df
 
 
@@ -119,8 +121,8 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
         DataFrame: Transformed data.
     """
     # set year and month to current time if not given
-    current_year = datetime.datetime.now().year
-    current_month = datetime.datetime.now().month
+    current_year = datetime.now().year
+    current_month = datetime.now().month
 
     df["bike_created_at_year"].fillna(current_year, inplace=True)
     df["bike_created_at_month"].fillna(current_month, inplace=True)
@@ -137,20 +139,21 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
         lambda x: 2018 if pd.isnull(x) or x < 1900 or x > current_year else x
     )
 
-    # Todo, add inflation to the msrp, currently this leads to the issue with price over smrp
     # adjust msrp to bike_year according to the EU inflation rate, backtracking only to 2020
     df["merge_year"] = df["bike_year"].apply(lambda x: 2020 if x < 2020 else x)
     df = pd.merge(
         df, cumulative_inflation_df, left_on="merge_year", right_on="year", how="left"
     )
     df["msrp"] = df["msrp"] * df["inflation_factor"]
+    # apply a logarithmic transformation since 'msrp' distribution is right-skewed
+    df["msrp"] = np.log(df["msrp"] + 1)
     df.drop(["merge_year", "year", "inflation_factor"], axis=1, inplace=True)
 
     # create bike age from bike_year
     df["bike_age"] = df["bike_created_at_year"] - df["bike_year"]
 
     # drop unused columns
-    df.drop(["bike_created_at_month", "bike_year", "template_id"], axis=1, inplace=True)
+    df.drop(["bike_year"], axis=1, inplace=True)
 
     # replace mileage_code with number, treated as numerical feature
     df["mileage_code"] = (
@@ -169,19 +172,13 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     # convert condition_code from string to integer, treated as numerical feature
     df["condition_code"] = pd.to_numeric(df["condition_code"], errors="coerce")
 
-    # replace None in categorical/string columns, it will be imputed as missing data, otherwise rhe Non and missing data will be treated as different
-    df["frame_material_code"].replace("None", np.nan, inplace=True)
-    df["brake_type_code"].replace("None", np.nan, inplace=True)
-    df["shifting_code"].replace("None", np.nan, inplace=True)
-    df["color"].replace("None", np.nan, inplace=True)
-    df["motor"].replace("None", np.nan, inplace=True)
-
+    # Replace 'None' with np.nan across all columns in the DataFrame
+    # in categorical/string columns, np.nan will be imputed as missing data, otherwise the None and missing data will be treated as different
+    df.replace("None", np.nan, inplace=True)
     return df
 
 
-def train_test_split_date(
-    df: pd.DataFrame, target: str = target, test_size: float = 0.12
-):
+def train_test_split_date(df: pd.DataFrame, target: str, test_size: float = 0.12):
     """
     Splits data into training and test sets based on a date cutoff.
     Args:
@@ -194,10 +191,62 @@ def train_test_split_date(
     X = df.drop([target], axis=1)
     y = df[target]
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=20
+        X, y, test_size=test_size, random_state=21
     )
 
     return X_train, y_train, X_test, y_test
+
+
+def oversample_data(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    target: str,
+    days: int = 60,
+    duplication_factor: int = 3,
+) -> Tuple[pd.DataFrame, pd.Series]:
+    """
+    Oversample the last 30 days of data with duplication_factor
+
+    Parameters:
+    - X_train: pd.DataFrame, the features of the training data.
+    - y_train: pd.Series, the target variable of the training data.
+    - target: str, the name of the target column.
+    - days: int, the number of days to consider for oversampling.
+    - duplication_factor: int, the factor by which to duplicate the recent data.
+
+    Returns:
+    - X_train_oversampled: pd.DataFrame, the oversampled features of the training data.
+    - y_train_oversampled: pd.Series, the oversampled target variable of the training data.
+    """
+    today = datetime.now()
+    threshold_date = today - timedelta(days=days)
+
+    train_df = X_train.copy()
+    train_df[target] = y_train.values
+
+    # Filter recent data
+    train_df["bike_created_at"] = pd.to_datetime(train_df["bike_created_at"])
+    recent_data = train_df[train_df["bike_created_at"] >= threshold_date]
+
+    # Duplicate recent data
+    duplicated_recent_data = pd.concat(
+        [recent_data] * duplication_factor, ignore_index=True
+    )
+
+    # Combine original data with duplicated recent data
+    oversampled_train_df = pd.concat(
+        [train_df, duplicated_recent_data], ignore_index=True
+    )
+
+    # Shuffle the dataset to mix duplicated and original data
+    oversampled_train_df = oversampled_train_df.sample(
+        frac=1, random_state=42
+    ).reset_index(drop=True)
+
+    X_train_oversampled = oversampled_train_df.drop(columns=[target], axis=1)
+    y_train_oversampled = oversampled_train_df[target]  # Target column
+
+    return X_train_oversampled, y_train_oversampled
 
 
 def create_data(
@@ -219,13 +268,16 @@ def create_data(
         path: Path to save data. Default is 'data/'.
     """
     df = get_data(query, query_dtype)
-    df = clean_data(df, numerical_features, categorical_features, target=target).sample(
-        frac=1
-    )
+    df = clean_data(df, numerical_features, categorical_features, target=target).sample(frac=1)
     df = feature_engineering(df)
     X_train, y_train, X_test, y_test = train_test_split_date(
         df, target, test_size=test_size
     )
+    X_train, y_train = oversample_data(X_train, y_train, target, 60, 3)
+    # drop bike_created_at column, which is not a feature in model
+    X_train = X_train.drop(columns=["bike_created_at"], axis=1)
+    X_test = X_test.drop(columns=["bike_created_at"], axis=1)
+
     return X_train, X_test, y_train, y_test
 
 
@@ -451,6 +503,7 @@ class Scaler(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
+        scaler_name: str,
         numerical_features: Optional[List[str]] = None,
         scaler_params: Optional[Dict] = None,
     ):
@@ -459,10 +512,17 @@ class Scaler(BaseEstimator, TransformerMixin):
         Parameters: numerical_features : list of str (optional, default scales all)
         """
         self.scaler_params = scaler_params
-        self.scaler_ = (
-            MinMaxScaler(**scaler_params) if scaler_params else MinMaxScaler()
-        )
         self.numerical_features = numerical_features
+        if scaler_name == "MinMaxScaler":
+            self.scaler_ = (
+                MinMaxScaler(**scaler_params) if scaler_params else MinMaxScaler()
+            )
+        elif scaler_name == "RobustScaler":
+            self.scaler_ = RobustScaler()
+        else:
+            raise ValueError(
+                f"Invalid scaler_name: {scaler_name}. Expected 'MinMaxScaler' or 'RobustScaler'."
+            )
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> "Scaler":
         """
@@ -517,11 +577,12 @@ def create_data_transform_pipeline(
     # Scaler for numerical features except msrp
     numerical_features_reduced = numerical_features.copy()
     numerical_features_reduced.remove("msrp")
-    numerical_scaler = Scaler(numerical_features_reduced)
+    numerical_scaler = Scaler("MinMaxScaler", numerical_features_reduced)
 
     # Custom scaler for msrp
+    msrp_robus_scaler = Scaler("RobustScaler", ["msrp"])
     msrp_scaler = Scaler(
-        ["msrp"], scaler_params={"feature_range": (msrp_min, msrp_max)}
+        "MinMaxScaler", ["msrp"], scaler_params={"feature_range": (0, msrp_max)}
     )
 
     # Create the pipeline with the custom imputer, one-hot encoder, and scaler
@@ -530,6 +591,7 @@ def create_data_transform_pipeline(
             ("impute", miss_forest_imputer),
             ("dummies", categorical_encoder),
             ("scale", numerical_scaler),
+            ("msrp_robus_scaler", msrp_robus_scaler),
             ("msrp_scaler", msrp_scaler),
         ]
     )
@@ -557,20 +619,11 @@ def fit_transform(
     Tuple[DataFrame, DataFrame, Pipeline]
         Transformed training data, transformed testing data, and fitted pipeline.
     """
-    # adjust the categorical and numerical lists according to the feature engineering
-    categorical_features_copy = categorical_features.copy()
-    numerical_features_copy = numerical_features.copy()
-    categorical_features_copy.remove("template_id")
-    numerical_features_copy.remove("bike_created_at_month")
-    numerical_features_copy.remove("bike_year")
-    numerical_features_copy.extend(
-        ["bike_created_at_month_sin", "bike_created_at_month_cos", "bike_age"]
-    )
-    print("categorical_features: {}".format(categorical_features_copy))
-    print("numerical_features: {}".format(numerical_features_copy))
+    print("categorical_features: {}".format(categorical_features))
+    print("numerical_features: {}".format(numerical_features))
 
     data_transform_pipeline = create_data_transform_pipeline(
-        categorical_features_copy, numerical_features_copy
+        categorical_features, numerical_features
     )
     X_train = data_transform_pipeline.fit_transform(X_train)
     X_test = data_transform_pipeline.transform(X_test)
@@ -667,7 +720,6 @@ def create_data_model(
         X_train,
         y_train,
         model,
-        target,
         parameters,
         scoring=mean_absolute_percentage_error,
     )
