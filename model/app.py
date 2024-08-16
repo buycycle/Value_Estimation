@@ -136,7 +136,7 @@ async def price_interval(
     # fill the missing data with np.nan and do feature engineering
     features = list(PriceRequest.model_fields.keys())
     X_constructed = construct_input_df(price_payload, features)
-    
+
     # Feature engineering
     X_feature_engineered = feature_engineering(X_constructed)
 
