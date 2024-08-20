@@ -23,7 +23,7 @@ snowflake-sqlalchemy==1.5.0
 
 scikit-learn==1.1.3
 quantile-forest==1.2.3
-category-encoders==2.6.1
+category-encoders==2.6.3
 
 # common ML functions and logging
 git+https://gitlab.com/rauner/buycycle.git@main#egg=buycycle

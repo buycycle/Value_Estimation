@@ -57,7 +57,7 @@ model_store = ModelStore()
 # inital data readin
 while True:
     try:
-        model_store.read_data()
+        model_store.read_data() # load model and data_transform_pipeline
         break
     except Exception as e:
         logger.error("Data could not initially be read, trying in 60sec")
@@ -66,7 +66,7 @@ while True:
 # then read the data periodically in 720 minutes(12 hours) ? only reload data, not retrain model???
 model_loader = Thread(target=model_store.read_data_periodically, args=(720, logger))
 model_loader.start()
-
+ 
 
 class PriceRequest(BaseModel):
     """Class representing the price request, the order need to be identical with the order in driver.py"""
