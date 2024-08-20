@@ -30,8 +30,8 @@ class GenericStrategy(PricePredictionStrategy):
             return predict_price_interval(
                 X,
                 self.model,
-                self.logger,
                 quantiles,
+                self.logger,
             )
         else:
             return predict_price(

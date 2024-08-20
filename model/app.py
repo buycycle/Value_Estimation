@@ -16,15 +16,9 @@ from threading import Thread
 import pandas as pd
 import numpy as np
 import time
-from datetime import datetime
-from datetime import datetime
 
 # config file
 import configparser
-
-# for scheduling
-# from apscheduler.schedulers.background import BackgroundScheduler
-# from apscheduler.triggers.interval import IntervalTrigger
 
 # get loggers
 from buycycle.logger import Logger
@@ -42,15 +36,16 @@ config.read(config_paths)
 
 path = "data/"
 
+# app = Flask(__name__)
 app = FastAPI()
 # read the environment from the docker environment variable
 environment = os.getenv("ENVIRONMENT")
 ab = os.getenv("AB")
 app_name = "price"
-app_version = "canary-003-interval_10"
-app_version = "canary-003-interval_10"
+app_version = "stable-002-highprice"
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
+
 logger.info("FastAPI app started")
 
 # create data stores and load periodically
@@ -65,14 +60,16 @@ while True:
         logger.error("Data could not initially be read, trying in 60sec")
         time.sleep(60)
 
-# then read the data periodically in 720 minutes(12 hours) ? only reload data, not retrain model???
+# then read the data periodically
 model_loader = Thread(target=model_store.read_data_periodically, args=(720, logger))
+
 model_loader.start()
 
 
 class PriceRequest(BaseModel):
     """Class representing the price request, the order need to be identical with the order in driver.py"""
-    # template_id: Union[int, None] = None
+
+    template_id: Union[int, None] = None
     brake_type_code: Union[object, None] = None
     frame_material_code: Union[object, None] = None
     shifting_code: Union[object, None] = None
@@ -80,13 +77,14 @@ class PriceRequest(BaseModel):
     bike_category_id: Union[int, None] = None
     motor: Union[int, None] = None
     sales_country_id: Union[int, None] = None
-    bike_created_at_month: Union[int, None] = None
     msrp: Union[float, None] = None
     condition_code: Union[object, None] = None
     bike_created_at_year: Union[int, None] = None
+    bike_created_at_month: Union[int, None] = None
     rider_height_min: Union[float, None] = None
     rider_height_max: Union[float, None] = None
     sales_duration: Union[int, None] = None
+    bike_year: Union[int, None] = None
     is_mobile: Union[int, None] = None
     is_ebike: Union[int, None] = None
     is_frameset: Union[int, None] = None
@@ -96,8 +94,8 @@ class PriceRequest(BaseModel):
     family_model_id: Union[int, None] = None
     family_id: Union[int, None] = None
     brand_id: Union[int, None] = None
-    bike_year: Union[int, None] = None
-    
+
+
 @app.get("/")
 async def home():
     return {"msg": "price"}
@@ -141,16 +139,17 @@ async def price_interval(
 
     # Feature engineering
     X_feature_engineered = feature_engineering(X_constructed)
- 
+
     # Predict the price and interval
     with model_store._lock:
         # Split the data into parts according to msrp
         # based on the original msrp before inflation adjustment(feature engineering)
-        mask_msrp = (
-            (X_constructed["msrp"] > 0) & (X_constructed["msrp"] <= (msrp_min))
-        ) | (X_constructed["msrp"] >= msrp_max)
-        # Inverting mask_msrp to select records not covered by it and including NaN values
-        mask_model = ~mask_msrp | pd.isna(X_constructed["msrp"])
+        mask_msrp = (X_constructed["msrp"] <= (msrp_min)) | (
+            X_constructed["msrp"] >= msrp_max
+        )
+        mask_model = (
+            (X_constructed["msrp"] > (msrp_min)) & (X_constructed["msrp"] < msrp_max)
+        ) | pd.isna(X_constructed["msrp"])
         conditions = [mask_msrp, mask_model]
 
         # Define choice function for the ML model predition cases
@@ -171,7 +170,7 @@ async def price_interval(
 
         # Define choices, which need to return the same structure
         choices = [
-            X_constructed.apply(predict_with_msrp, args=(0.5,), axis=1),
+            X_feature_engineered.apply(predict_with_msrp, args=(0.5,), axis=1),
             predictions,
         ]
 
@@ -188,13 +187,10 @@ async def price_interval(
         # Extract the price and interval columns
         price = X_feature_engineered["price"].tolist()
         interval = X_feature_engineered["interval"].tolist()
-        log_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logger.info(
             strategy,
             extra={
-                "timestamp": log_time,
                 "price": price,
                 "interval": interval,
                 "quantiles": quantiles,
