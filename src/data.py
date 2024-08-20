@@ -33,8 +33,8 @@ from src.driver import (
 )
 
 def get_data(
-    main_query: str,
-    main_query_dtype: str,
+    query: str,
+    query_dtype: str,
     index_col: str = "id",
     config_paths: str = "config/config.ini",
 ) -> pd.DataFrame:
@@ -49,10 +49,10 @@ def get_data(
         DataFrame: Main data.
     """
     df = sql_db_read(
-        query=main_query,
+        query=query,
         DB="DB_BIKES",
         config_paths=config_paths,
-        dtype=main_query_dtype,
+        dtype=query_dtype,
         index_col=index_col,
     )
     return df
@@ -83,7 +83,7 @@ def clean_data(
         + numerical_features
         + [target]
         + ["bike_created_at", "bike_year"]
-        if col not in ["template_ud", "bike_created_at_month_sin", "bike_created_at_month_cos", "bike_age"]
+        if col not in ["template_id", "bike_created_at_month_sin", "bike_created_at_month_cos", "bike_age"]
     ]
     df = df[column_order]
 
