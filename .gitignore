@@ -1,12 +1,7 @@
-# emacs
-*~
 
 # compiled
 *.pyc
 
-# IntelliJ
-.idea
-*.iml
 
 # config
 config/config.ini
@@ -22,6 +17,4 @@ plot
 
 **/.DS_Store
 
-# notebook.ipynb and notebook folder
-notebook.ipynb
-notebook
+
