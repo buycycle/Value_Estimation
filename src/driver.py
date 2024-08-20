@@ -72,7 +72,6 @@ categorical_features = [
     "motor",  # [0, <NA>, 1]
     "sales_country_id",  # 29
     "bike_created_at_month",
-    "bike_component_id",  # 72 components
 ]
  
 # 17 numerical fetures
@@ -88,6 +87,7 @@ numerical_features = [
     "is_frameset",
     "mileage_code",
     "bike_type_id",  # only 1 and 2
+    "bike_component_id",  # 72 components
     "family_model_id",  # 6382
     "family_id",  # 1732
     "brand_id",  # 334

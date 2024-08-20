@@ -79,7 +79,6 @@ class PriceRequest(BaseModel):
     motor: Union[int, None] = None
     sales_country_id: Union[int, None] = None
     bike_created_at_month: Union[int, None] = None
-    bike_component_id: Union[int, None] = None
     msrp: Union[float, None] = None
     condition_code: Union[object, None] = None
     bike_created_at_year: Union[int, None] = None
@@ -91,6 +90,7 @@ class PriceRequest(BaseModel):
     is_frameset: Union[int, None] = None
     mileage_code: Union[object, None] = None
     bike_type_id: Union[int, None] = None
+    bike_component_id: Union[int, None] = None
     family_model_id: Union[int, None] = None
     family_id: Union[int, None] = None
     brand_id: Union[int, None] = None
