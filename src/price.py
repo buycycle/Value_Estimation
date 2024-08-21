@@ -20,10 +20,9 @@ from src.driver import cumulative_inflation_df
 environment = os.getenv("ENVIRONMENT")
 ab = os.getenv("AB")
 app_name = "price"
-app_version = "canary-003-interval_10"
+app_version = "stable-002-highprice"
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
-
 
 def train(
     X_train: pd.DataFrame,
@@ -300,5 +299,4 @@ def check_in_interval(
 
     print("{} quantiles: {} in range".format(quantiles, in_range))
     return result
-
 

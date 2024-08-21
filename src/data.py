@@ -177,8 +177,9 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     df.replace("None", np.nan, inplace=True)
     return df
 
-
-def train_test_split_date(df: pd.DataFrame, target: str, test_size: float = 0.12):
+def train_test_split_date(
+    df: pd.DataFrame, target: str, test_size: float = 0.12
+):
     """
     Splits data into training and test sets based on a date cutoff.
     Args:
@@ -193,9 +194,7 @@ def train_test_split_date(df: pd.DataFrame, target: str, test_size: float = 0.12
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=21
     )
-
     return X_train, y_train, X_test, y_test
-
 
 def oversample_data(
     X_train: pd.DataFrame,
@@ -277,7 +276,6 @@ def create_data(
     # drop bike_created_at column, which is not a feature in model
     X_train = X_train.drop(columns=["bike_created_at"], axis=1)
     X_test = X_test.drop(columns=["bike_created_at"], axis=1)
-
     return X_train, X_test, y_train, y_test
 
 

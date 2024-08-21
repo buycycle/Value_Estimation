@@ -78,7 +78,7 @@ categorical_features = [
 numerical_features = [
     "msrp",
     "condition_code",
-    "bike_created_at_year",
+    "bike_created_at_year",   
     "rider_height_min",
     "rider_height_max",
     "sales_duration",
@@ -145,6 +145,7 @@ main_query = """
 
                 -- temporal,only used for oversampling data
                 bikes.created_at as bike_created_at, 
+
                 -- temporal
                 year(bikes.created_at) as bike_created_at_year,
                 month(bikes.created_at) as bike_created_at_month,
@@ -155,6 +156,7 @@ main_query = """
                 -- take booking.created_at as end, bikes.created_at as start
          
                 DATEDIFF(bookings.created_at,bikes.created_at) as sales_duration,
+
 
 
                 -- spatial
@@ -249,42 +251,3 @@ main_query_dtype = {
     "is_frameset": pd.Int64Dtype(),
 }
 
-
-def generate_query(
-    selection, maintable="bikes", joins="", where_clause="", order_by_clause=""
-):
-    SPECIAL_KEYWORDS = ["CASE", "YEAR", "MONTH", "COALESCE"]
-    select_clauses = []
-    dtype = {}
-    for table, columns in selection.items():
-        for expression, column_info in columns.items():
-            # Check if the expression is a complex SQL expression
-            expression_upper = expression.upper()
-            alias = column_info['alias']
-            datatype = column_info['datatype']
-            if any(keyword in expression_upper for keyword in SPECIAL_KEYWORDS):
-                # Directly use the expression without table prefix
-                select_clauses.append(f"{expression} as {alias}")
-            else:
-                # Standard column, prepend table name
-                select_clauses.append(f"{table}.{expression} as {alias}")
-            dtype[alias] = datatype
-
-    select_statement = ",\n".join(select_clauses)
-
-    join_clauses = []
-    for join in joins:
-        join_clauses.append(
-            f"{join['type']} {join['table2']} on {join['table1']}.{join['t1Column']} = {join['table2']}.{join['t2Column']}"
-        )
-    join_statement = "\n".join(join_clauses)
-
-    query = f"""
-        SELECT
-        {select_statement}
-        FROM {maintable}
-        {join_statement}
-        {where_clause}
-        {order_by_clause}
-        """.strip()
-    return query, dtype
