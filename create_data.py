@@ -27,10 +27,6 @@ create_data_model(
     target=target,
     test_size=0.12,
     parameters={
-        # "kernel": 'rbf',
-        # "C": 1.0,
-        # "epsilon": 0.1,
-        # "random_state": 42, #XGBRegressor
         "criterion": "absolute_error",
         "random_state": 42,
         "n_jobs": -1,  # Use all cores for training

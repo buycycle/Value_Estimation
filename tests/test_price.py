@@ -8,13 +8,14 @@ import random
 
 from tests.test_fixtures import testdata
 from src.price import predict_price_interval
+logger = None
 
 
 def test_mean_error(testdata, mean_error_limit=0.3, quantiles=[0.2, 0.5, 0.8]):
     """Test that the mean percentage error of the test data is below a certain limit."""
     model_store, X_train, X_test, y_train, y_test = testdata
     strategy, preds, intervals, error = predict_price_interval(
-        X_test, model_store.regressor, quantiles, logger=None
+        X_test, model_store.regressor, logger, quantiles
     )
 
     percentage_errors = np.abs((y_test - preds) / y_test)
@@ -63,7 +64,7 @@ def test_time_predict(
 
     start_time = time.time()
     strategy, preds, intervals, error = predict_price_interval(
-        X_test_subset, model_store.regressor, quantiles, logger=None
+        X_test_subset, model_store.regressor, logger, quantiles
     )
     end_time = time.time()
     elapsed_time = (end_time - start_time) * 1000  # Convert to milliseconds
@@ -83,7 +84,7 @@ def test_predict(testdata, quantiles=[0.2, 0.5, 0.8], subset_fraction=0.2):
     X_test_subset = X_test.iloc[random_indices]
 
     strategy, preds, intervals, error = predict_price_interval(
-        X_test_subset, model_store.regressor, quantiles, logger=None
+        X_test_subset, model_store.regressor, logger, quantiles
     )
 
     assert len(preds) == len(

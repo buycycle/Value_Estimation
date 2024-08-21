@@ -45,11 +45,25 @@ def cal_inflation_cum_factor(current_year, inflation_rate):
 
 
 cumulative_inflation_df = cal_inflation_cum_factor(current_year, inflation_rate)
+# print(cal_inflation_cum_factor(2024, inflation_rate))
+# 0   2024          1.000000
+# 1   2023          1.064000
+# 2   2022          1.161888
+# 3   2021          1.195583
+# 4   2020          1.203952
+# 5   2019          1.220807
+# 6   2018          1.242782
+# 7   2017          1.262666
+# 8   2016          1.265192
+# 9   2015          1.266457
+# 10  2014          1.271523
+# 11  2013          1.288052
+# 12  2012          1.321542
 
 # The order of the pydantic BAseModel should follow the order [ categorical+features + numerical_features ]
 # 8 categorical features
 categorical_features = [
-    "template_id",  # 6595, not used currently
+    # "template_id",  # 6595, too much for categorical features, not used now
     "brake_type_code",
     "frame_material_code",
     "shifting_code",
@@ -57,18 +71,17 @@ categorical_features = [
     "bike_category_id",  # [1, 2, 4, <NA>, 26, 28, 19, 29, 27]
     "motor",  # [0, <NA>, 1]
     "sales_country_id",  # 29
+    "bike_created_at_month",
 ]
 
 # 17 numerical fetures
 numerical_features = [
     "msrp",
     "condition_code",
-    "bike_created_at_year",
-    "bike_created_at_month",
+    "bike_created_at_year",   
     "rider_height_min",
     "rider_height_max",
     "sales_duration",
-    "bike_year",
     "is_mobile",
     "is_ebike",
     "is_frameset",
@@ -78,6 +91,9 @@ numerical_features = [
     "family_model_id",  # 6382
     "family_id",  # 1732
     "brand_id",  # 334
+    "bike_created_at_month_sin",
+    "bike_created_at_month_cos",
+    "bike_age", # calculated from bike_year and bike_created_at_year
 ]
 
 test_query = """
@@ -127,6 +143,9 @@ main_query = """
                 bikes.msrp as msrp,
 
 
+                -- temporal,only used for oversampling data
+                bikes.created_at as bike_created_at, 
+
                 -- temporal
 
                 year(bikes.created_at) as bike_created_at_year,
@@ -135,12 +154,9 @@ main_query = """
 
 
 
-                -- take if succeed_at is not null, else take updated_at difference to created_at
-                CASE
-                    WHEN bookings.succeed_at IS NOT NULL THEN DATEDIFF(bookings.succeed_at,bikes.created_at)
-                    ELSE DATEDIFF(bookings.updated_at,bikes.created_at)
-
-                END as sales_duration,
+                -- take booking.created_at as end, bikes.created_at as start
+         
+                DATEDIFF(bookings.created_at,bikes.created_at) as sales_duration,
 
 
 
@@ -218,6 +234,7 @@ main_query_dtype = {
     "sales_price": pd.Float64Dtype(),
     "sales_duration": pd.Int64Dtype(),
     "msrp": pd.Float64Dtype(),
+    "bike_created_at": str,
     "bike_created_at_year": pd.Int64Dtype(),
     "bike_created_at_month": pd.Int64Dtype(),
     "bike_year": pd.Int64Dtype(),
@@ -242,17 +259,3 @@ main_query_dtype = {
     "is_frameset": pd.Int64Dtype(),
 }
 
-# print(cal_inflation_cum_factor(2024, inflation_rate))
-# 0   2024          1.000000
-# 1   2023          1.064000
-# 2   2022          1.161888
-# 3   2021          1.195583
-# 4   2020          1.203952
-# 5   2019          1.220807
-# 6   2018          1.242782
-# 7   2017          1.262666
-# 8   2016          1.265192
-# 9   2015          1.266457
-# 10  2014          1.271523
-# 11  2013          1.288052
-# 12  2012          1.321542

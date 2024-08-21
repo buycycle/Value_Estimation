@@ -1,20 +1,32 @@
+# emacs
+*~
 
 # compiled
 *.pyc
 
+# IntelliJ
+.idea
+*.iml
 
 # config
 config/config.ini
 
 
 # data
-src/estat_tec00118.tsv
 data
+src/estat_tec00118.tsv
 plot
+analyzation
+evaluation
+backup
 
-# notebook
+# notebook.ipynb and notebook folder
+notebook.ipynb
+notebook
 *.ipynb
-
 **/.DS_Store
 
+
+create_data_2023.py
+project-structure.txt
 
