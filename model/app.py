@@ -95,7 +95,8 @@ class PriceRequest(BaseModel):
     family_id: Union[int, None] = None
     brand_id: Union[int, None] = None
     bike_year: Union[int, None] = None
-    
+
+
 @app.get("/")
 async def home():
     return {"msg": "price"}

@@ -24,7 +24,6 @@ app_version = "canary-003-interval_10"
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
 
-
 def train(
     X_train: pd.DataFrame,
     y_train: pd.DataFrame,
@@ -300,5 +299,4 @@ def check_in_interval(
 
     print("{} quantiles: {} in range".format(quantiles, in_range))
     return result
-
 

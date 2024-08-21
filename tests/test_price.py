@@ -10,11 +10,12 @@ from tests.test_fixtures import testdata
 from src.price import predict_price_interval
 logger = None
 
+
 def test_mean_error(testdata, mean_error_limit=0.3, quantiles=[0.2, 0.5, 0.8]):
     """Test that the mean percentage error of the test data is below a certain limit."""
     model_store, X_train, X_test, y_train, y_test = testdata
     strategy, preds, intervals, error = predict_price_interval(
-        X_test, model_store.regressor, logger, quantiles,
+        X_test, model_store.regressor, logger, quantiles
     )
 
     percentage_errors = np.abs((y_test - preds) / y_test)
