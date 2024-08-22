@@ -192,7 +192,6 @@ async def price_interval(
         logger.info(
             strategy,
             extra={
-                "timestamp": log_time,
                 "price": price,
                 "interval": interval,
                 "quantiles": quantiles,
@@ -214,6 +213,7 @@ async def price_interval(
 
             # Return success response with recommendation data and 200 OK
             return {
+                "timestamp": log_time,
                 "status": "success",
                 "strategy_target": strategy_target,
                 "strategy": strategy,
