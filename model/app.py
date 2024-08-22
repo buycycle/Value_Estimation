@@ -46,7 +46,7 @@ app = FastAPI()
 environment = os.getenv("ENVIRONMENT")
 ab = os.getenv("AB")
 app_name = "price"
-app_version = "canary-003-interval_10"
+app_version = "stable-002-highprice"
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
 logger.info("FastAPI app started")
@@ -192,7 +192,6 @@ async def price_interval(
         logger.info(
             strategy,
             extra={
-                "timestamp": log_time,
                 "price": price,
                 "interval": interval,
                 "quantiles": quantiles,
@@ -214,6 +213,7 @@ async def price_interval(
 
             # Return success response with recommendation data and 200 OK
             return {
+                "timestamp": log_time,
                 "status": "success",
                 "strategy_target": strategy_target,
                 "strategy": strategy,
