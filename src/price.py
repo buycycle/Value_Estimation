@@ -112,7 +112,6 @@ def predict_price_interval(
 
         # price adjustment = -0.1, interval range = 0.1
         preds = [round(x*(1-0.1)/10)*10 for x in preds]
-        # scale interval to interval range
         new_interval = []
         for i, p in zip(interval, preds):
             new_lower_bound = round(p*(1-0.05)/10)*10
@@ -198,7 +197,6 @@ def predict_with_msrp(row, ratio) -> Tuple[np.ndarray, np.ndarray]:
     interval = [round(price *(1-0.05)/10)*10, round(price* (1+0.05)/10)*10]
     return price, interval
 
-
 def test(
     X_transformed: pd.DataFrame,
     y: pd.Series,
@@ -241,7 +239,6 @@ def test(
     print("Error: {}".format(score))
 
     return strategy, preds, interval, error
-
 
 def check_in_interval(
     categorical_features: List[str],
