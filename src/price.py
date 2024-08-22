@@ -20,7 +20,7 @@ from src.driver import cumulative_inflation_df
 environment = os.getenv("ENVIRONMENT")
 ab = os.getenv("AB")
 app_name = "price"
-app_version = "stable-002-highprice"
+app_version = "canary-003-interval_10"
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
 
@@ -110,12 +110,12 @@ def predict_price_interval(
         preds = predict[:, 1]
         interval = predict[:, [0, 2]]
 
-        # prediction and 5% interval
-        preds = [round(x/10)*10 for x in preds]
+        # price adjustment = -0.1, interval range = 0.1
+        preds = [round(x*(1-0.1)/10)*10 for x in preds]
         new_interval = []
         for i, p in zip(interval, preds):
-            new_lower_bound = round(p*(1-0.025)/10)*10
-            new_upper_bound = round(p*(1+0.025)/10)*10
+            new_lower_bound = round(p*(1-0.05)/10)*10
+            new_upper_bound = round(p*(1+0.05)/10)*10
             new_interval.append([new_lower_bound, new_upper_bound])
         interval = new_interval
 
@@ -192,10 +192,10 @@ def predict_with_msrp(row, ratio) -> Tuple[np.ndarray, np.ndarray]:
         cumulative_inflation_df["year"] == year, "inflation_factor"
     ].iloc[0]
     msrp = msrp * inflation_factor
-    price = round(msrp * ratio /10)*10
-    interval = [round(price *(1-0.025)/10)*10, round(price* (1+0.025)/10)*10]
+    # price adjustment = -0.1, interval range = 0.1
+    price = round(msrp * ratio *(1-0.1)/10)*10
+    interval = [round(price *(1-0.05)/10)*10, round(price* (1+0.05)/10)*10]
     return price, interval
-
 
 def test(
     X_transformed: pd.DataFrame,
@@ -239,7 +239,6 @@ def test(
     print("Error: {}".format(score))
 
     return strategy, preds, interval, error
-
 
 def check_in_interval(
     categorical_features: List[str],
