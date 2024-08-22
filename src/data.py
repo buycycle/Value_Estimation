@@ -510,15 +510,16 @@ class Scaler(BaseEstimator, TransformerMixin):
         """
         self.scaler_params = scaler_params
         self.numerical_features = numerical_features
-        if scaler_name == "MinMaxScaler":
+        self.scaler_name = scaler_name
+        if self.scaler_name == "MinMaxScaler":
             self.scaler_ = (
-                MinMaxScaler(**scaler_params) if scaler_params else MinMaxScaler()
+                MinMaxScaler(**self.scaler_params) if self.scaler_params else MinMaxScaler()
             )
-        elif scaler_name == "RobustScaler":
+        elif self.scaler_name == "RobustScaler":
             self.scaler_ = RobustScaler()
         else:
             raise ValueError(
-                f"Invalid scaler_name: {scaler_name}. Expected 'MinMaxScaler' or 'RobustScaler'."
+                f"Invalid scaler_name: {self.scaler_name}. Expected 'MinMaxScaler' or 'RobustScaler'."
             )
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None) -> "Scaler":
