@@ -139,7 +139,6 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
         lambda x: 2018 if pd.isnull(x) or x < 1900 or x > current_year else x
     )
 
-    # Todo, add inflation to the msrp, currently this leads to the issue with price over smrp
     # adjust msrp to bike_year according to the EU inflation rate, backtracking only to 2020
     df["merge_year"] = df["bike_year"].apply(lambda x: 2020 if x < 2020 else x)
     df = pd.merge(
@@ -452,7 +451,6 @@ class MissForestImputer(BaseEstimator, TransformerMixin):
                 X_transformed[col] = self.label_encoders[col].inverse_transform(
                     imputed_labels.astype(int)
                 )
-
         return X_transformed
 
 

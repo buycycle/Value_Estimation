@@ -60,7 +60,7 @@ cumulative_inflation_df = cal_inflation_cum_factor(current_year, inflation_rate)
 # 11  2013          1.288052
 # 12  2012          1.321542
 
-# The order of the pydantic BAseModel should follow the order [ categorical+features + numerical_features ]
+# The order of the pydantic BaseModel should follow the order [ categorical+features + numerical_features ]
 # 8 categorical features
 categorical_features = [
     # "template_id",  # 6595, too much for categorical features, not used now
@@ -73,7 +73,7 @@ categorical_features = [
     "sales_country_id",  # 29
     "bike_created_at_month",
 ]
-
+ 
 # 17 numerical fetures
 numerical_features = [
     "msrp",
@@ -147,7 +147,6 @@ main_query = """
                 bikes.created_at as bike_created_at, 
 
                 -- temporal
-
                 year(bikes.created_at) as bike_created_at_year,
                 month(bikes.created_at) as bike_created_at_month,
                 bikes.year as bike_year,
@@ -181,12 +180,6 @@ main_query = """
                 bikes.brake_type_code as brake_type_code,
                 bikes.frame_material_code as frame_material_code,
                 bikes.shifting_code as shifting_code,
-
-
-
-
-
-
                 bikes.bike_component_id as bike_component_id,
 
                 -- find similarity between hex codes
@@ -197,7 +190,6 @@ main_query = """
                 bikes.family_id as  family_id,
                 bikes.brand_id as brand_id,
 
-            
                 -- is_mobile
                 bikes.is_mobile as is_mobile,
 

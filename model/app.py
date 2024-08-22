@@ -46,10 +46,9 @@ app = FastAPI()
 environment = os.getenv("ENVIRONMENT")
 ab = os.getenv("AB")
 app_name = "price"
-app_version = "stable-002-highprice"
+app_version = "canary-003-interval_10"
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
-
 logger.info("FastAPI app started")
 
 # create data stores and load periodically
@@ -64,11 +63,10 @@ while True:
         logger.error("Data could not initially be read, trying in 60sec")
         time.sleep(60)
 
-# then read the data periodically
+# then read the data periodically in 720 minutes(12 hours) ? only reload data, not retrain model???
 model_loader = Thread(target=model_store.read_data_periodically, args=(720, logger))
-
 model_loader.start()
-
+ 
 
 class PriceRequest(BaseModel):
     """Class representing the price request, the order need to be identical with the order in driver.py"""
