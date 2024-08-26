@@ -146,7 +146,7 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     )
     df["msrp"] = df["msrp"] * df["inflation_factor"]
     # apply a logarithmic transformation since 'msrp' distribution is right-skewed
-    df["msrp"] = np.log(df["msrp"] + 1)
+    # df["msrp"] = np.log(df["msrp"] + 1)
     df.drop(["merge_year", "year", "inflation_factor"], axis=1, inplace=True)
 
     # create bike age from bike_year

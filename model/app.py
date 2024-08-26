@@ -63,7 +63,7 @@ while True:
         logger.error("Data could not initially be read, trying in 60sec")
         time.sleep(60)
 
-# then read the data periodically in 720 minutes(12 hours) ? only reload data, not retrain model???
+# then read the data periodically in 720 minutes(12 hours)
 model_loader = Thread(target=model_store.read_data_periodically, args=(720, logger))
 model_loader.start()
  
