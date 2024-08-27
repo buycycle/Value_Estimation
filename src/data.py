@@ -146,7 +146,9 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     )
     df["msrp"] = df["msrp"] * df["inflation_factor"]
     # apply a logarithmic transformation since 'msrp' distribution is right-skewed
-    df["msrp"] = np.log(df["msrp"] + 1)
+    # Replace 0 with np.nan in the 'msrp' column, cause with value 0 the msrp will not be imputed later, which will cause low price since msrp matters
+    df['msrp'].replace(0, np.nan, inplace=True)
+    df["msrp"] = df["msrp"].apply(lambda x: np.log(x) if pd.notnull(x) else x) # failure with msrp nan or null
     df.drop(["merge_year", "year", "inflation_factor"], axis=1, inplace=True)
 
     # create bike age from bike_year

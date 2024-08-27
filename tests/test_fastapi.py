@@ -44,10 +44,10 @@ def test_multiple_request_fastapi(app_mock, limit=150):
     """test time and len of return for all strategies of the fastapi app"""
     client = TestClient(app_mock)
     request = [
-        {"template_id": 9973, "msrp": 3299, "frame_material_code": "carbon"},
-        {"family_id": 821, "msrp": 3500, "motor": 1},
-        {"family_id": 821, "msrp": 25000, "motor": 1},
-        {"family_id": 821, "motor": 1},
+        {"template_id": 9973, "msrp": 2499, "frame_material_code": "carbon"},
+        {"template_id": 14045, "msrp": 0, "family_model_id": 8258},
+        {"template_id": 14045, "msrp": 5499, "family_model_id": 8258},
+        {"template_id": 14045, "family_model_id": 8258},
     ]
 
     start_time = time.time()
