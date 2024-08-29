@@ -20,7 +20,7 @@ from src.driver import cumulative_inflation_df
 environment = os.getenv("ENVIRONMENT")
 ab = os.getenv("AB")
 app_name = "price"
-app_version = "canary-003-interval_10"
+app_version = "stable-002-highprice"
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
 
@@ -111,11 +111,11 @@ def predict_price_interval(
         interval = predict[:, [0, 2]]
 
         # price adjustment = -0.1, interval range = 0.1
-        preds = [round(x*(1-0.1)/10)*10 for x in preds]
+        preds = [round(x/10)*10 for x in preds]
         new_interval = []
         for i, p in zip(interval, preds):
-            new_lower_bound = round(p*(1-0.05)/10)*10
-            new_upper_bound = round(p*(1+0.05)/10)*10
+            new_lower_bound = round(p*(1-0.025)/10)*10
+            new_upper_bound = round(p*(1+0.025)/10)*10
             new_interval.append([new_lower_bound, new_upper_bound])
         interval = new_interval
 
@@ -179,7 +179,7 @@ def predict_with_msrp(row, ratio) -> Tuple[np.ndarray, np.ndarray]:
         interval: Prediction intervals.
     """
     msrp = row["msrp"]
-    if math.isnan(msrp):
+    if msrp is None or math.isnan(msrp):
         return float('nan'), [float('nan'), float('nan')]
     # assign the variable year is the vaule of row["bike_year"], but if the vaule is null or < 1900, then year = 2018
     if pd.isnull(row["bike_year"]) or row["bike_year"] < 2020:
@@ -193,8 +193,8 @@ def predict_with_msrp(row, ratio) -> Tuple[np.ndarray, np.ndarray]:
     ].iloc[0]
     msrp = msrp * inflation_factor
     # price adjustment = -0.1, interval range = 0.1
-    price = round(msrp * ratio *(1-0.1)/10)*10
-    interval = [round(price *(1-0.05)/10)*10, round(price* (1+0.05)/10)*10]
+    price = round(msrp * ratio/10)*10
+    interval = [round(price *(1-0.025)/10)*10, round(price* (1+0.025)/10)*10]
     return price, interval
 
 def test(
