@@ -179,7 +179,7 @@ def predict_with_msrp(row, ratio) -> Tuple[np.ndarray, np.ndarray]:
         interval: Prediction intervals.
     """
     msrp = row["msrp"]
-    if math.isnan(msrp):
+    if msrp is None or math.isnan(msrp):
         return float('nan'), [float('nan'), float('nan')]
     # assign the variable year is the vaule of row["bike_year"], but if the vaule is null or < 1900, then year = 2018
     if pd.isnull(row["bike_year"]) or row["bike_year"] < 2020:

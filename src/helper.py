@@ -56,4 +56,9 @@ def construct_input_df(df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
         else:
             # If the column is not available, fill it with pd.NA
             result_df[column] = np.nan
+
+    # Special handling for the 'msrp' column: replace 0 with np.nan
+    result_df['msrp'].replace([None, 0], np.nan, inplace=True)
+
+    
     return result_df
