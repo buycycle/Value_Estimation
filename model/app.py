@@ -58,8 +58,8 @@ while True:
         logger.error("Data could not initially be read, trying in 60sec")
         time.sleep(60)
 
-# then read the data periodically in 1440 minutes(24 hours), try block included in read_data_periodically in DataStoreBase class
-model_loader = Thread(target=model_store.read_data_periodically, args=(1440, logger))
+# then read the data periodically in 2880 minutes(2 days), try block included in read_data_periodically in DataStoreBase class
+model_loader = Thread(target=model_store.read_data_periodically, args=(2880, logger))
 model_loader.start()
  
 
