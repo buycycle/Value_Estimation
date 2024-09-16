@@ -16,14 +16,9 @@ from threading import Thread
 import pandas as pd
 import numpy as np
 import time
-from datetime import datetime
 
 # config file
 import configparser
-
-# for scheduling
-# from apscheduler.schedulers.background import BackgroundScheduler
-# from apscheduler.triggers.interval import IntervalTrigger
 
 # get loggers
 from buycycle.logger import Logger
@@ -46,7 +41,7 @@ app = FastAPI()
 environment = os.getenv("ENVIRONMENT")
 ab = os.getenv("AB")
 app_name = "price"
-app_version = "stable-002-highprice"
+app_version = "canary-003-interval_10"
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
 logger.info("FastAPI app started")
@@ -63,8 +58,8 @@ while True:
         logger.error("Data could not initially be read, trying in 60sec")
         time.sleep(60)
 
-# then read the data periodically in 720 minutes(12 hours)
-model_loader = Thread(target=model_store.read_data_periodically, args=(720, logger))
+# then read the data periodically in 1440 minutes(24 hours), try block included in read_data_periodically in DataStoreBase class
+model_loader = Thread(target=model_store.read_data_periodically, args=(1440, logger))
 model_loader.start()
  
 
@@ -116,113 +111,117 @@ async def price_interval(
     take in bike data
     the payload should be in PriceRequest format
     """
-    # Convert the PriceRequest to a dataframe
-    if isinstance(request_data, list):
-        request_dic = []
-        for r in request_data:
-            request_dic.append(r.model_dump(exclude_unset=True))
-        price_payload = pd.DataFrame(request_dic)
-    else:
-        request_dic = request_data.model_dump(exclude_unset=True)
-        price_payload = pd.DataFrame([request_dic])
-
-    if price_payload.empty:
-        return Response(
-            content="no valid request values", status_code=status.HTTP_400_BAD_REQUEST
-        )
-
     # get target strategy, with default value "generic"
     strategy_target = strategy
+    logger.info("Price request received")
 
-    # fill the missing data with np.nan and do feature engineering
-    features = list(PriceRequest.model_fields.keys())
-    X_constructed = construct_input_df(price_payload, features)
+    # Convert the PriceRequest to a dataframe
+    try:
+        if isinstance(request_data, list):
+            request_dic = [r.model_dump(exclude_unset=True) for r in request_data]
+            price_payload = pd.DataFrame(request_dic)
+        else:
+            request_dic = request_data.model_dump(exclude_unset=True)
+            price_payload = pd.DataFrame([request_dic])
 
-    # Feature engineering
-    X_feature_engineered = feature_engineering(X_constructed)
+        if price_payload.empty:
+            logger.error("Request received: The payload is empty.")  
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No valid request values")
+        else:
+            logger.info("Request received:\n%s", price_payload.to_string())
+    except Exception as e:
+        logger.error("Error processing request data: %s", str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request data format")
+
+    # construct dataframe, fill the missing data with np.nan and do feature engineering
+    try:
+        features = list(PriceRequest.model_fields.keys())
+        X_constructed = construct_input_df(price_payload, features)
+        X_feature_engineered = feature_engineering(X_constructed)
+    except Exception as e:
+        logger.error("Error in feature engineering: %s", str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Feature engineering failed")
 
     # Predict the price and interval
-    with model_store._lock:
-        # Split the data into parts according to msrp
-        # based on the original msrp before inflation adjustment(feature engineering)
-        mask_msrp = (
-            (X_constructed["msrp"] > 0) & (X_constructed["msrp"] <= (msrp_min))
-        ) | (X_constructed["msrp"] >= msrp_max)
-        # Inverting mask_msrp to select records not covered by it and including NaN values
-        mask_model = ~mask_msrp | pd.isna(X_constructed["msrp"])
-        conditions = [mask_msrp, mask_model]
+    try:
+        with model_store._lock:
+            # Split the data into parts according to msrp
+            # based on the original msrp before inflation adjustment(feature engineering)
+            mask_msrp = (
+                (X_constructed["msrp"] > 0) & (X_constructed["msrp"] <= (msrp_min))
+            ) | (X_constructed["msrp"] >= msrp_max)
+            mask_model = ~mask_msrp | pd.isna(X_constructed["msrp"])
+            conditions = [mask_msrp, mask_model]
 
-        # Define choice function for the ML model predition cases
-        generic_strategy = GenericStrategy(
-            model_store.regressor, model_store.data_transform_pipeline, logger
-        )
-        quantiles = [0.2, 0.5, 0.8]
-
-        X_transformed = model_store.data_transform_pipeline.transform(
-            X_feature_engineered
-        )
-
-        strategy, price, interval, error = generic_strategy.predict_price(
-            X=X_transformed, quantiles=quantiles
-        )
-        combined = list(zip(price, interval))
-        predictions = pd.Series(combined)
-
-        # Define choices, which need to return the same structure
-        choices = [
-            X_constructed.apply(predict_with_msrp, args=(0.5,), axis=1),
-            predictions,
-        ]
-
-        # Define default value
-        default = pd.Series([(np.nan, [np.nan, np.nan])] * len(X_feature_engineered))
-
-        # apply the conditions and get the price and interval
-        X_feature_engineered["price"], X_feature_engineered["interval"] = zip(
-            *np.select(conditions, choices, default=default)
-        )
-
-        # sort by original request ids
-        X_feature_engineered = X_feature_engineered.reindex(X_constructed.index)
-        # Extract the price and interval columns
-        price = X_feature_engineered["price"].tolist()
-        interval = X_feature_engineered["interval"].tolist()
-        log_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        logger.info(
-            strategy,
-            extra={
-                "price": price,
-                "interval": interval,
-                "quantiles": quantiles,
-                "X_input": request_dic,
-            },
-        )
-
-        if error:
-            # Return error response if it exists
-            logger.error(
-                "Error no price prediction available, exception: {}".format(error)
+            # Define choice function for the ML model predition cases
+            generic_strategy = GenericStrategy(
+                model_store.regressor, model_store.data_transform_pipeline, logger
             )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Price prediction not available",
+            quantiles = [0.2, 0.5, 0.8]
+
+            X_transformed = model_store.data_transform_pipeline.transform(
+                X_feature_engineered
             )
 
-        else:
+            strategy, price, interval, error = generic_strategy.predict_price(
+                X=X_transformed, quantiles=quantiles
+            )
+            combined = list(zip(price, interval))
+            predictions = pd.Series(combined)
 
-            # Return success response with recommendation data and 200 OK
-            return {
-                "timestamp": log_time,
-                "status": "success",
-                "strategy_target": strategy_target,
-                "strategy": strategy,
-                "quantiles": quantiles,
-                "price": price,
-                "interval": interval,
-                "app_name": app_name,
-                "app_version": app_version,
-            }
+            # Define choices, which need to return the same structure
+            choices = [
+                X_constructed.apply(predict_with_msrp, args=(0.5,), axis=1),
+                predictions,
+            ]
+
+            # Define default value
+            default = pd.Series([(np.nan, [np.nan, np.nan])] * len(X_feature_engineered))
+
+            # apply the conditions and get the price and interval
+            X_feature_engineered["price"], X_feature_engineered["interval"] = zip(
+                *np.select(conditions, choices, default=default)
+            )
+
+            # sort by original request ids
+            X_feature_engineered = X_feature_engineered.reindex(X_constructed.index)
+            # Extract the price and interval columns
+            price = X_feature_engineered["price"].tolist()
+            interval = X_feature_engineered["interval"].tolist()
+
+            logger.info(
+                strategy,
+                extra={
+                    "price": price,
+                    "interval": interval,
+                    "quantiles": quantiles,
+                    "X_input": request_dic,
+                },
+            )
+
+            if error:
+                # Return error response if it exists
+                logger.error("Prediction error: %s", error)
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Price prediction not available",
+                )
+
+            else:
+                # Return success response with recommendation data and 200 OK
+                return {
+                    "status": "success",
+                    "strategy_target": strategy_target,
+                    "strategy": strategy,
+                    "quantiles": quantiles,
+                    "price": price,
+                    "interval": interval,
+                    "app_name": app_name,
+                    "app_version": app_version,
+                }
+    except Exception as e:
+        logger.error("Error during prediction process: %s", str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Prediction failed")
 
 
 # Error handling for 400 Bad Request
@@ -252,7 +251,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 # add 500 error handling
 @app.exception_handler(500)
-def internal_server_error_handler(request: Request, exc: HTTPException):
+async def internal_server_error_handler(request: Request, exc: HTTPException):
     """Log the error details using the provided logger"""
     logger.error(
         f"500 Internal Server Error: {str(exc)}",
@@ -265,3 +264,32 @@ def internal_server_error_handler(request: Request, exc: HTTPException):
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"status": "error", "message": "Internal Server Error: " + str(exc)},
     )
+
+    
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    # Log the HTTPException details
+    logger.error(f"HTTP Exception: {str(exc.detail)}", extra={
+        "info": "HTTP Exception caught",
+    })
+
+    # Return the HTTPException's status code and detail in the response
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"status": "error", "message": exc.detail}
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    # Log the error details
+    logger.error(f"Unexpected error: {str(exc)}", extra={
+        "info": "Unexpected error caught",
+    })
+
+    # Return a generic 500 Internal Server Error response
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"status": "error", "message": "An unexpected error occurred. Please try again later."}
+    )
+
+
