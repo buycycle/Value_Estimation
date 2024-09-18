@@ -12,6 +12,7 @@ from typing import Union, List
 
 # periodical data read-in
 from threading import Thread
+import random
 
 import pandas as pd
 import numpy as np
@@ -59,7 +60,8 @@ while True:
         time.sleep(60)
 
 # then read the data periodically in 2880 minutes(2 days), try block included in read_data_periodically in DataStoreBase class
-model_loader = Thread(target=model_store.read_data_periodically, args=(2880, logger))
+read_interval = 2880 + random.uniform(-120, 120)
+model_loader = Thread(target=model_store.read_data_periodically, args=(read_interval, logger))
 model_loader.start()
  
 
