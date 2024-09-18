@@ -13,7 +13,6 @@ from typing import Union, List
 # periodical data read-in
 import random
 from threading import Thread
-import random
 
 import pandas as pd
 import numpy as np
