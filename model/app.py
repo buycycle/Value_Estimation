@@ -11,6 +11,7 @@ from pydantic import BaseModel, validator
 from typing import Union, List
 
 # periodical data read-in
+import random
 from threading import Thread
 import random
 
@@ -60,8 +61,8 @@ while True:
         time.sleep(60)
 
 # then read the data periodically in 2880 minutes(2 days), try block included in read_data_periodically in DataStoreBase class
-read_interval = 2880 + random.uniform(-120, 120)
-model_loader = Thread(target=model_store.read_data_periodically, args=(read_interval, logger))
+read_interval = 2880 + random.uniform(-240, 240)
+model_loader = Thread(target=model_store.read_data_periodically, args=(2880, logger))
 model_loader.start()
  
 
