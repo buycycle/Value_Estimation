@@ -11,6 +11,7 @@ from pydantic import BaseModel, validator
 from typing import Union, List
 
 # periodical data read-in
+import random
 from threading import Thread
 
 import pandas as pd
@@ -41,7 +42,7 @@ app = FastAPI()
 environment = os.getenv("ENVIRONMENT")
 ab = os.getenv("AB")
 app_name = "price"
-app_version = "canary-003-interval_10"
+app_version = "stable-002-highprice"
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
 logger.info("FastAPI app started")
@@ -59,6 +60,7 @@ while True:
         time.sleep(60)
 
 # then read the data periodically in 2880 minutes(2 days), try block included in read_data_periodically in DataStoreBase class
+read_interval = 2880 + random.uniform(-240, 240)
 model_loader = Thread(target=model_store.read_data_periodically, args=(2880, logger))
 model_loader.start()
  
