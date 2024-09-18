@@ -7,7 +7,7 @@ import os
 from fastapi import FastAPI, Request, Response, HTTPException, status, Header
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import Union, List
 
 # periodical data read-in
@@ -91,6 +91,19 @@ class PriceRequest(BaseModel):
     brand_id: Union[int, None] = None
     bike_year: Union[int, None] = None
 
+    @validator("msrp", pre=True)
+    def validate_msrp(cls, value):
+        if value is None:
+            return 0
+        if isinstance(value, str):
+            try:
+                # Attempt to convert the string to an integer
+                return int(value)
+            except ValueError:
+                # If conversion fails, return the default value
+                return 0
+        return value
+
 
 @app.get("/")
 async def home():
@@ -113,7 +126,6 @@ async def price_interval(
     """
     # get target strategy, with default value "generic"
     strategy_target = strategy
-    logger.info("Price request received")
 
     # Convert the PriceRequest to a dataframe
     try:
@@ -127,10 +139,8 @@ async def price_interval(
         if price_payload.empty:
             logger.error("Request received: The payload is empty.")  
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No valid request values")
-        else:
-            logger.info("Request received:\n%s", price_payload.to_string())
     except Exception as e:
-        logger.error("Error processing request data: %s", str(e))
+        logger.error("Error processing request data: %s wich x_input: %s", str(e), request_dic)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request data format")
 
     # construct dataframe, fill the missing data with np.nan and do feature engineering
@@ -139,7 +149,7 @@ async def price_interval(
         X_constructed = construct_input_df(price_payload, features)
         X_feature_engineered = feature_engineering(X_constructed)
     except Exception as e:
-        logger.error("Error in feature engineering: %s", str(e))
+        logger.error("Error in feature engineering: %s wich x_input: %s", str(e), request_dic)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Feature engineering failed")
 
     # Predict the price and interval
@@ -220,7 +230,7 @@ async def price_interval(
                     "app_version": app_version,
                 }
     except Exception as e:
-        logger.error("Error during prediction process: %s", str(e))
+        logger.error("Error during prediction process: %s wich x_input: %s", str(e), request_dic)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Prediction failed")
 
 
