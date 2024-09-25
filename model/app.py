@@ -75,7 +75,7 @@ class PriceRequest(BaseModel):
     bike_category_id: Union[int, None] = None
     motor: Union[int, None] = None
     sales_country_id: Union[int, None] = None
-    bike_created_at_month: Union[int, None] = None
+    bike_created_at_month: Union[int, None] = None # keep for sin and cos
     msrp: Union[float, None] = None
     condition_code: Union[object, None] = None
     bike_created_at_year: Union[int, None] = None

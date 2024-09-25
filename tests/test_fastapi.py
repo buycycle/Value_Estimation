@@ -85,6 +85,6 @@ def test_multiple_request_fastapi(app_mock, limit=150):
     for p, msrp in zip(price, msrp_list):
         if msrp is not None and not np.isnan(float(msrp)) and msrp != 0:
             assert (
-                p < msrp
+                p < msrp*0.9 and p > msrp*0.3
             ), f"expected price < msrp, got {p} >= {msrp}"
 

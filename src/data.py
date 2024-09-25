@@ -82,7 +82,7 @@ def clean_data(
         for col in categorical_features
         + numerical_features
         + [target]
-        + ["bike_created_at", "bike_year"]
+        + ["bike_created_at", "bike_created_at_month", "bike_year"]
         if col not in ["template_id", "bike_created_at_month_sin", "bike_created_at_month_cos", "bike_age"]
     ]
     df = df[column_order]
@@ -150,7 +150,7 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     df["msrp"] = df["msrp"] * df["inflation_factor"]
     df["msrp"] = df["msrp"].apply(lambda x: np.log(x) if pd.notnull(x) and x > 0 else np.nan) # failure with msrp nan or null
     
-    df.drop(["merge_year", "year", "inflation_factor"], axis=1, inplace=True)
+    df.drop(["merge_year", "year", "inflation_factor", "bike_created_at_month"], axis=1, inplace=True)
 
     # create bike age from bike_year
     df["bike_age"] = df["bike_created_at_year"] - df["bike_year"]
@@ -195,7 +195,7 @@ def train_test_split_date(
     X = df.drop([target], axis=1)
     y = df[target]
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=21
+        X, y, test_size=test_size, random_state=23
     )
     return X_train, y_train, X_test, y_test
 
