@@ -32,7 +32,6 @@ xgboost
 cmake
 lightfm
 apscheduler
-boto3==1.26.156
 
 # linting
 #black==23.1.0
