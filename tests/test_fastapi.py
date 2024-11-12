@@ -11,7 +11,7 @@ import numpy as np
 def test_single_request_fastapi(app_mock, limit=150):
     """test the single price request for all strategies of the fastapi app"""
     client = TestClient(app_mock)
-    request = {"msrp": 1200, "family_id": 12, "is_ebike": 1}
+    request = {"bike_id":223455, "msrp": 1200, "family_id": 12, "is_ebike": 1}
 
     start_time = time.time()
     response = client.post("/price_interval", json=request)
@@ -45,13 +45,13 @@ def test_multiple_request_fastapi(app_mock, limit=150):
     """test time and len of return for all strategies of the fastapi app"""
     client = TestClient(app_mock)
     request = [
-        {"template_id": 9973, "msrp": 2499, "frame_material_code": "carbon"},
-        {"template_id": 14045, "msrp": 5499, "family_model_id": 8258},
-        {"template_id": 14045, "msrp": 0, "family_model_id": 8258},
-        {"template_id": 14045, "msrp": None, "family_model_id": 8258},
-        {"template_id": 14045, "family_model_id": 8258},
-        {"brake_type_code":"hydraulic","frame_material_code":"carbon","shifting_code":"electronic","bike_category_id":1,"bike_created_at_month":9,"msrp":4299.0,"condition_code":3,"bike_created_at_year":2024,"sales_duration":14,"is_mobile":1,"is_ebike":0,"is_frameset":0,"bike_type_id":1,"bike_component_id":64,"family_model_id":117380,"family_id":11718,"brand_id":128,"bike_year":2023}, 
-        {"brake_type_code":"hydraulic","frame_material_code":"carbon","shifting_code":"mechanical","bike_category_id":1,"bike_created_at_month":9,"msrp":3299.0,"condition_code":3,"bike_created_at_year":2024,"sales_duration":14,"is_mobile":0,"is_ebike":0,"is_frameset":0,"bike_type_id":1,"bike_component_id":17,"family_model_id":8758,"family_id":2371,"brand_id":227,"bike_year":2021}
+        {"bike_id":223455, "template_id": 9973, "msrp": 2499, "frame_material_code": "carbon"},
+        {"bike_id":223456,"template_id": 14045, "msrp": 5499, "family_model_id": 8258},
+        {"bike_id":223456,"template_id": 14045, "msrp": 0, "family_model_id": 8258},
+        {"bike_id":223456,"template_id": 14045, "msrp": None, "family_model_id": 8258},
+        {"bike_id":223456,"template_id": 14045, "family_model_id": 8258},
+        {"bike_id":223457,"brake_type_code":"hydraulic","frame_material_code":"carbon","shifting_code":"electronic","bike_category_id":1,"bike_created_at_month":9,"msrp":4299.0,"condition_code":3,"bike_created_at_year":2024,"sales_duration":14,"is_mobile":1,"is_ebike":0,"is_frameset":0,"bike_type_id":1,"bike_component_id":64,"family_model_id":117380,"family_id":11718,"brand_id":128,"bike_year":2023}, 
+        {"bike_id":223458,"brake_type_code":"hydraulic","frame_material_code":"carbon","shifting_code":"mechanical","bike_category_id":1,"bike_created_at_month":9,"msrp":3299.0,"condition_code":3,"bike_created_at_year":2024,"sales_duration":14,"is_mobile":0,"is_ebike":0,"is_frameset":0,"bike_type_id":1,"bike_component_id":17,"family_model_id":8758,"family_id":2371,"brand_id":227,"bike_year":2021}
     ]
 
     start_time = time.time()
