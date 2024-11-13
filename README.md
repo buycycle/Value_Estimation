@@ -113,6 +113,7 @@ Parameters:
 
     ```json
     [{
+        "bike_id": "Int64",
         "template_id": "Int64",
         "msrp": "Float64",
         "bike_created_at_year": "Int64",
@@ -140,6 +141,7 @@ Parameters:
         "is_frameset": "Int64"
     },
     {
+        "bike_id": "Int64",
         "template_id": "Int64",
         ...
     }
@@ -156,13 +158,13 @@ ab
         -H "Content-Type: application/json" \
         -H "strategy: Generic" \
         -H "version: canary-001" \
-        -d '[{"user_id": 123, "distinct_id": "abc123", "bike_id": 456, "family_id": 12, "msrp": 1200}, {}]'
+        -d '[{"bike_id": 456, "family_id": 12, "msrp": 1200}, {}]'
 dev
     curl -i -X POST dev.price.buycycle.com/price_interval \
         -H "Content-Type: application/json" \
         -H "strategy: Generic" \
         -H "version: canary-001" \
-        -d '[{"user_id": 123, "distinct_id": "abc123", "bike_id": 456, "family_id": 12, "msrp": 1200}, {}]'
+        -d '[{"bike_id": 456, "family_id": 12, "msrp": 1200}, {}]'
 
 
 local
@@ -176,6 +178,7 @@ Return:
         "status": "success",
         "strategy": "Generic",
         "quantiles": [0.05, 0.5, 0.95],
+        "bike_id": [456, ...],
         "price": [2382.0, ...],
         "interval": [[1600.0, 3000.0],[...]],
         "app_name": "price",

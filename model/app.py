@@ -68,6 +68,7 @@ model_loader.start()
 class PriceRequest(BaseModel):
     """Class representing the price request, the order need to be identical with the order in driver.py"""
     # template_id: Union[int, None] = None
+    bike_id: Union[int, None] = None
     brake_type_code: Union[object, None] = None
     frame_material_code: Union[object, None] = None
     shifting_code: Union[object, None] = None
@@ -149,7 +150,7 @@ async def price_interval(
     try:
         features = list(PriceRequest.model_fields.keys())
         X_constructed = construct_input_df(price_payload, features)
-        X_feature_engineered = feature_engineering(X_constructed)
+        X_feature_engineered = feature_engineering(X_constructed.drop(columns=['bike_id'])) 
     except Exception as e:
         logger.error("Error in feature engineering: %s wich x_input: %s", str(e), request_dic)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Feature engineering failed")
@@ -194,16 +195,17 @@ async def price_interval(
             X_feature_engineered["price"], X_feature_engineered["interval"] = zip(
                 *np.select(conditions, choices, default=default)
             )
-
             # sort by original request ids
             X_feature_engineered = X_feature_engineered.reindex(X_constructed.index)
             # Extract the price and interval columns
+            bike_id = price_payload["bike_id"].tolist()
             price = X_feature_engineered["price"].tolist()
             interval = X_feature_engineered["interval"].tolist()
 
             logger.info(
                 strategy,
                 extra={
+                    "bike_id": bike_id,
                     "price": price,
                     "interval": interval,
                     "quantiles": quantiles,
@@ -226,6 +228,7 @@ async def price_interval(
                     "strategy_target": strategy_target,
                     "strategy": strategy,
                     "quantiles": quantiles,
+                    "bike_id": bike_id,
                     "price": price,
                     "interval": interval,
                     "app_name": app_name,
