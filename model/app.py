@@ -42,7 +42,7 @@ app = FastAPI()
 environment = os.getenv("ENVIRONMENT")
 ab = os.getenv("AB")
 app_name = "price"
-app_version = "canary-003-interval10"
+app_version = "canary-004-interval15"
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
 logger.info("FastAPI app started")
@@ -63,7 +63,7 @@ while True:
 read_interval = 2880 + random.uniform(-240, 240)
 model_loader = Thread(target=model_store.read_data_periodically, args=(2880, logger))
 model_loader.start()
- 
+
 
 class PriceRequest(BaseModel):
     """Class representing the price request, the order need to be identical with the order in driver.py"""
@@ -140,7 +140,7 @@ async def price_interval(
             price_payload = pd.DataFrame([request_dic])
 
         if price_payload.empty:
-            logger.error("Request received: The payload is empty.")  
+            logger.error("Request received: The payload is empty.")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No valid request values")
     except Exception as e:
         logger.error("Error processing request data: %s wich x_input: %s", str(e), request_dic)
@@ -150,7 +150,7 @@ async def price_interval(
     try:
         features = list(PriceRequest.model_fields.keys())
         X_constructed = construct_input_df(price_payload, features)
-        X_feature_engineered = feature_engineering(X_constructed.drop(columns=['bike_id'])) 
+        X_feature_engineered = feature_engineering(X_constructed.drop(columns=['bike_id']))
     except Exception as e:
         logger.error("Error in feature engineering: %s wich x_input: %s", str(e), request_dic)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Feature engineering failed")
@@ -280,7 +280,7 @@ async def internal_server_error_handler(request: Request, exc: HTTPException):
         content={"status": "error", "message": "Internal Server Error: " + str(exc)},
     )
 
-    
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     # Log the HTTPException details

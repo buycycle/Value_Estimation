@@ -20,7 +20,7 @@ from src.driver import cumulative_inflation_df
 environment = os.getenv("ENVIRONMENT")
 ab = os.getenv("AB")
 app_name = "price"
-app_version = "canary-003-interval10"
+app_version = "canary-004-interval15"
 
 logger = Logger.configure_logger(environment, ab, app_name, app_version)
 
@@ -110,8 +110,8 @@ def predict_price_interval(
         preds = predict[:, 1]
         interval = predict[:, [0, 2]]
 
-        # price adjustment = -0.1, interval range = 0.1
-        preds = [round(x*(1-0.1)/10)*10 for x in preds]
+        # price adjustment = -0.15, interval range = 0.1
+        preds = [round(x*(1-0.15)/10)*10 for x in preds]
         new_interval = []
         for i, p in zip(interval, preds):
             new_lower_bound = round(p*(1-0.05)/10)*10
